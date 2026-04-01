@@ -26,7 +26,13 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 5. [Skill Activation Map](#5-skill-activation-map)
 6. [Standards & Conventions](#6-standards--conventions)
 7. [Approval & Safety Protocols](#7-approval--safety-protocols)
-8. [Gaps & Recommended Additions](#8-gaps--recommended-additions)
+8. [Gaps & Future Additions](#8-gaps--future-additions)
+
+**Appendices:**
+- [A: Full Connector & MCP Inventory](#appendix-a-full-connector--mcp-inventory)
+- [B: Full Skill Inventory](#appendix-b-full-skill-inventory)
+- [C: CLAUDE.md Integration](#appendix-c-claudemd-integration)
+- [D: Implementation History (Archived)](#appendix-d-implementation-history-archived)
 
 ---
 
@@ -99,7 +105,7 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 | **ZoomInfo** | `mcp__e5874bfa` | Company/contact enrichment, intent data, account research |
 | **Semantic Scholar** | `mcp__8b8f2173` | Academic paper search (200M+ papers, PubMed, ArXiv) |
 
-### 2.4a BD & CRM Stack (Separate Scope)
+### 2.5 BD & CRM Stack (Separate Scope)
 
 | Tool | Interface | Primary Use |
 |------|-----------|-------------|
@@ -108,7 +114,7 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 
 > BD system design is documented separately. CRM is no longer in Notion.
 
-### 2.5 Design & Documents
+### 2.6 Design & Documents
 
 | Tool | MCP ID | Primary Use |
 |------|--------|-------------|
@@ -117,7 +123,7 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 | **Word (Anthropic)** | `mcp__Word__By_Anthropic` | .docx creation and editing |
 | **PDF (Anthropic)** | `mcp__PDF__By_Anthropic` | PDF reading, display |
 
-### 2.6 Desktop & Browser Automation
+### 2.7 Desktop & Browser Automation
 
 | Tool | MCP ID | Primary Use |
 |------|--------|-------------|
@@ -126,7 +132,7 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 | **Desktop Commander** | `mcp__Desktop_Commander` | File system, process management |
 | **AppleScript** | `mcp__Control_your_Mac` | macOS automation |
 
-### 2.7 Platform & Meta
+### 2.8 Platform & Meta
 
 | Tool | MCP ID | Primary Use |
 |------|--------|-------------|
@@ -330,29 +336,13 @@ This closes the AI self-validation gap (98.6% self-assessed valid vs 69% indepen
 **Trigger:** PR is ready for Tobi's review.
 
 **Claude's actions:**
-1. **Classify PR into risk lane** (Section 7.4):
-   - **Lane 1 (Deep):** Security-sensitive, architecture changes, new external integrations, L/XL stories
-   - **Lane 2 (Standard):** Feature work, M-sized stories, non-trivial changes
-   - **Lane 3 (Summary):** S-sized stories, documentation, config changes, dependency bumps, refactoring with full test coverage
-2. Generate PR summary with:
-   - **Lane classification** (Lane 1/2/3 + rationale)
-   - BLUF: what changed and why
-   - Files changed (grouped by concern)
-   - CI status (all checks must pass)
-   - AI review status: Qodo PR-Agent findings + Gemini Code Assist findings (all High/Critical resolved)
-   - Test results
-   - Risk assessment
-   - Rollback plan
-3. **Circuit breaker:** If AI reviewers disagree on any finding, auto-escalate to the next higher lane.
-4. Surface PR for Tobi per lane:
-   - **Lane 1:** Full PR summary + diff. Tobi does detailed review.
-   - **Lane 2:** Full PR summary. Tobi reviews summary + spot-checks diff.
-   - **Lane 3:** Structured 1-2 line summary (what changed, tests passed, AI verdict). Tobi approves or escalates from summary.
+1. **Classify PR into risk lane** per Section 7.4 (Lane 1 Deep / Lane 2 Standard / Lane 3 Summary)
+2. Generate PR summary containing: lane classification + rationale, BLUF (what changed and why), files changed (grouped by concern), CI status, AI review status (Qodo + Gemini findings, all High/Critical resolved), test results, risk assessment, rollback plan
+3. **Circuit breaker:** If AI reviewers disagree on any finding, auto-escalate to the next higher lane
+4. Surface PR for Tobi per lane format (see Section 7.4 for lane-specific review requirements)
 5. On approval: merge to main, tag release if applicable
 6. Transition Jira issue to "Done"
 7. If deploying: run `engineering:deploy-checklist` and execute change request → `operations:change-request`
-
-**Lane governance:** Tobi can upgrade any PR to a higher lane at any time. Weekly reflection includes a review of all Lane 3 items that merged that week.
 
 ### Phase 7: Weekly Reflection & Learning
 
@@ -483,7 +473,11 @@ Conventional Commits standard:
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ```
 
-**Types:** `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `ci`
+**Rules:**
+- **MUST:** Every commit follows Conventional Commits format with `Co-Authored-By` footer
+- **MUST:** Type is one of: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `ci`
+- **SHOULD:** Scope matches Jira project key or module name
+- **SHOULD:** Description is imperative mood, ≤72 characters
 
 **Examples:**
 - `feat(linkedin-bd): add dynamic rate governor with circuit breaker`
@@ -515,13 +509,21 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 
 T-shirt sizes drive decomposition decisions and testing tier selection. They are NOT mapped to story points and NOT used for velocity tracking.
 
-**WIP Limit:** 1 story "In Progress" at a time. Maximum 2 only if the first is blocked awaiting Tobi's review.
-
-**Story decomposition:** Stories sized L or XL must be decomposed into subtasks in Jira before implementation. Target single-function scope per subtask. Any subtask touching >3 files should be further decomposed or justified in the spec. Each subtask is individually transitionable for intra-story visibility.
+**Rules:**
+- **MUST:** WIP limit of 1 story "In Progress" at a time. Maximum 2 only if the first is blocked awaiting Tobi's review.
+- **MUST:** L/XL stories decomposed into subtasks before implementation. Target single-function scope per subtask.
+- **MUST:** Any subtask touching >3 files further decomposed or justified in the spec.
+- **SHOULD:** Each subtask individually transitionable for intra-story visibility.
+- **SHOULD:** All Claude-created issues carry `claude-built` label.
 
 **Workflow states:** Backlog → Ready → In Progress → In Review → Awaiting Approval → Done → Released (see Section 3.1 for full state definitions)
 
 ### 6.4 Notion Conventions
+
+**Rules:**
+- **MUST:** Notion is for flow dashboards and knowledge base only — never for issue tracking (Jira), code docs (Confluence), or HHN ops (Monday.com).
+- **MUST:** CRM / BD prospect tracking stays in PocketBase + HTML dashboard.
+- **SHOULD:** Flow dashboards include board view by workflow state, timeline, and chart views.
 
 **Use Notion for:**
 - Flow dashboards (board view by workflow state, timeline, chart views)
@@ -531,16 +533,14 @@ T-shirt sizes drive decomposition decisions and testing tier selection. They are
 - Meeting notes and decisions
 - Product roadmaps
 
-**Do NOT use Notion for:**
-- Issue tracking (use Jira — source of truth for stories/bugs/tasks)
-- CRM / BD prospect tracking (use PocketBase + HTML dashboard)
-- Code documentation (use Confluence + repo)
-- Architecture decisions (use Confluence ADRs)
-- HHN operations (use Monday.com)
-
 **Why Notion for flow dashboards:** Notion's MCP gives Claude 16 tools including database creation with typed schemas, 10 view types (board, table, calendar, timeline, chart, dashboard), and property-level updates. Flow tracking requires structured, queryable data with multiple views — Notion handles this natively. Confluence pages are flat documents with no structured data, views, or formulas. See ADR in this document's approval history for full evaluation.
 
 ### 6.5 Confluence Conventions
+
+**Rules:**
+- **MUST:** All ADRs, specs, and PRDs live in Confluence (not Notion, not repo).
+- **MUST:** Page naming follows `{Project} — {Doc Type} — {Title}` format.
+- **SHOULD:** ADRs include a Security Considerations section.
 
 **Use Confluence for:**
 - ADRs (Architecture Decision Records)
@@ -549,21 +549,20 @@ T-shirt sizes drive decomposition decisions and testing tier selection. They are
 - Project specs and PRDs
 - Weekly reflection / demo writeups (narrative, not data)
 
-**Page naming:** `{Project} — {Doc Type} — {Title}`
-Example: `LinkedIn BD — ADR — CRM Platform Selection`
+Example page name: `LinkedIn BD — ADR — CRM Platform Selection`
 
 ### 6.6 Definition of Done & Release Gates
 
-**Definition of Done (quality commitment):** A story is "Done" — meaning the increment is inspectable and potentially releasable — when:
+**Definition of Done (quality commitment):** A story is "Done" — meaning the increment is inspectable and potentially releasable — when all MUST items pass:
 
-1. All acceptance criteria verified
-2. Tests written and passing (per tiered testing standards — Section 4)
-3. Code reviewed (Claude self-review + AI reviewers + Tobi approval)
-4. Documentation updated (Confluence and/or inline)
-5. No regressions introduced
-6. Secret scan passes (no secrets in committed code)
-7. Dependency scan passes (no Critical/High CVEs unaddressed)
-8. Memory updated if non-obvious learnings emerged
+1. **MUST:** All acceptance criteria verified
+2. **MUST:** Tests written and passing (per tiered testing standards — Section 4)
+3. **MUST:** Code reviewed (Claude self-review + AI reviewers + Tobi approval)
+4. **MUST:** No regressions introduced
+5. **MUST:** Secret scan passes (no secrets in committed code)
+6. **MUST:** Dependency scan passes (no Critical/High CVEs unaddressed)
+7. **SHOULD:** Documentation updated (Confluence and/or inline)
+8. **SHOULD:** Memory updated if non-obvious learnings emerged
 
 **Release gates (governance controls):** A "Done" story becomes "Released" when:
 
@@ -579,13 +578,13 @@ Example: `LinkedIn BD — ADR — CRM Platform Selection`
 
 A story is "Ready" to be pulled when:
 
-1. Acceptance criteria written in Given/When/Then format
-2. Dependencies identified and unblocked (or explicitly accepted as risk)
-3. T-shirt size assigned (S, M, L, XL)
-4. Spec approved (M+ stories — see Phase 2, step 5)
-5. No open questions requiring Tobi input
+1. **SHOULD:** Acceptance criteria written in Given/When/Then format
+2. **SHOULD:** Dependencies identified and unblocked (or explicitly accepted as risk)
+3. **MUST:** T-shirt size assigned (S, M, L, XL)
+4. **MUST:** Spec approved (M+ stories — see Phase 2, step 5)
+5. **SHOULD:** No open questions requiring Tobi input
 
-**Anti-gate rule:** DoR is a shared understanding, not a bureaucratic gate. Claude can pull urgent items that don't meet DoR with documented risk acceptance. Flag the gap and proceed.
+**Anti-gate rule:** DoR is a shared understanding, not a bureaucratic gate. Claude **MAY** pull urgent items that don't meet DoR with documented risk acceptance. Flag the gap and proceed.
 
 ### 6.8 CI/CD Baseline (GitHub Actions)
 
@@ -658,7 +657,7 @@ Baseline security controls integrated into the development lifecycle. All tools 
 **Process controls:**
 
 - **ADR security field:** Every Architecture Decision Record includes a "Security Considerations" section (threat model, auth/authz, data classification, attack surface changes). See updated ADR template.
-- **Definition of Done update:** Stories are not "Done" until secret scan and dependency scan pass (Section 6.6, items 9-10).
+- **Definition of Done update:** Stories are not "Done" until secret scan and dependency scan pass (Section 6.6, items 6-7).
 - **Dependency policy:** Dependabot PRs for Critical/High CVEs are treated as priority fixes — Claude creates a Jira bug and addresses within the current sprint. Medium/Low CVEs are batched into the next sprint's tech debt allocation.
 
 **Incident response for security findings:**
@@ -1658,60 +1657,17 @@ AI verdict: {Qodo: clean/findings} | {Gemini: clean/findings}
 
 > **v4.0 methodology pivot implemented.** Scrum → continuous flow with cadenced reflection. Based on 5-source research synthesis documented in `sop-v4-methodology-recommendations.md`. All P0–P3 steelman recommendations from v3.2 carried forward. See `sop-steelman-recommendations.md` for prior audit trail.
 
+**SOP frozen until July 2026** unless a break occurs. Next action: convert to skill for cross-surface access. See Appendix D for implementation history.
+
 ### 8.1 Slack MCP (Optional)
 
-**Current state:** No team chat integration beyond iMessages.
+**Current state:** No team chat integration beyond iMessages. Adding a Slack MCP would enable Claude to post standup updates, notifications, and incident alerts to channels.
 
-**If team collaboration grows:** Adding a Slack MCP would enable Claude to post standup updates, sprint notifications, and incident alerts to channels.
+### 8.2 Canary Deployment & Observability (Deferred)
 
-### 8.2 Independent Code Review — ✅ Implemented (v3.1)
+**Current state:** No deployed production services. When the first service has users, add: canary deployment strategy, runtime anomaly detection, and observability dashboards. Documented as "NOT RECOMMENDED — premature" in `sop-v4-final-audit-recommendations.md`.
 
-Moved to Section 6.10. Dual AI reviewer setup: Qodo PR-Agent (primary, GitHub Action) + Gemini Code Assist (secondary, free GitHub App).
-
-### 8.3 Security Lifecycle — ✅ Implemented (v3.1)
-
-Moved to Section 6.11. SSDF-lite baseline: GitHub secret scanning, Dependabot, Semgrep Community. ADR template updated with Security Considerations field. DoD updated with security scan requirements.
-
-### 8.4 P2/P3 Steelman Items — ✅ Implemented (v3.2, carried to v4.0)
-
-All P2 and P3 recommendations from the 3-way red team review carried forward into v4.0:
-- **Blocker detection** → Section 3.1 (aging alerts)
-- **Story decomposition** → Section 6.3 (Jira Conventions) + Phase 3
-- **Tiered testing** → Phase 4 (Testing & Quality)
-- **Breach post-mortem** → Section 7.3 (Breach Classification)
-- **DORA + flow metrics** → Phase 7 (Weekly Reflection)
-- **DoD/release gate separation** → Section 6.6
-- **Monthly roadmap review** → Section 3.2 (Cadenced Events)
-- **Memory schema & cleanup** → Section 6.12
-
-### 8.5 v4.0 Methodology Pivot — ✅ Implemented
-
-Research-driven methodology change based on 5-source synthesis (see `sop-v4-methodology-recommendations.md`):
-- **R1: Continuous flow** → Section 3 (Workflow Lifecycle) replaces Sprint Lifecycle
-- **R2: Cadenced events** → Section 3.2 (daily async + weekly reflection replaces 4 sprint ceremonies)
-- **R3: Pull-based replenishment** → Phase 3 (continuous pull replaces sprint planning)
-- **R4: Flow metrics** → Phase 7 (cycle time/throughput/WIP age replace velocity/story points)
-- **R5: Risk-lane review** → Section 7.4 (3-lane review model with circuit breaker)
-- **R6: Spec-first** → Phase 2 step 5 + DoR update (spec approved before implementation for M+ stories)
-- **R7: Workflow states** → Section 3.1 (7-state Jira workflow with aging alerts)
-- **R8: Task sizing** → Section 6.3 (single-function scope, 3-file threshold)
-- **R10: Session management** → Section 6.13 (context budget, HANDOVER.md)
-- **R11: TDD default** → Phase 4 (write tests first, implement to pass)
-- **R12: CLAUDE.md optimization** → Appendix C rewrite
-
-### 8.6 v4.1 Engineering Standards — ✅ Implemented
-
-Final audit based on 3-source research synthesis (see `sop-v4-final-audit-recommendations.md`):
-- **R1: Engineering standards** → Sections 6.14–6.25 (language stack, architecture invariants, Python/TS/VBA/Bash standards, pattern library, dependency management, AI guardrails, documentation-as-prompt, CI/CD pipeline, pre-commit hooks, AI anti-patterns, CLAUDE.md coding template)
-- **R2: CLAUDE.md coding standards** → Appendix C updated with ~20 coding rules (commands, hard constraints, patterns, structure)
-- **R3: Cognitive load management** → Section 1 (Flow Guardian responsibility)
-- **R4: PR review load metric** → Phase 7 metrics
-- **R5: Aging alert escalation** → Section 3.1 (escalation rules beyond passive alerts)
-- **R6: MUST/SHOULD/MAY tiering** → Applied to §6.1, §6.8, §6.9
-
-**SOP frozen until July 2026** unless a break occurs. Next action: convert to skill for cross-surface access.
-
-### 8.7 Not Connected (Available in Connector Panel)
+### 8.3 Not Connected (Available in Connector Panel)
 
 These connectors are visible but not yet connected. Connect when needed:
 
@@ -1907,3 +1863,55 @@ Coding standards (CLAUDE.md commands + hard constraints + patterns):
 Full SOP with phase-by-phase procedures, skill activation map, and standards: `Development and Tech/claude-development-sop.md` — read this file at the start of any dev session.
 </development_sop>
 ```
+
+## Appendix D: Implementation History (Archived)
+
+Items below were tracked in §8 during active development. Moved here on v4.1 freeze (April 2026) to keep §8 focused on open gaps only.
+
+### D.1 Independent Code Review — Implemented (v3.1)
+
+Moved to Section 6.10. Dual AI reviewer setup: Qodo PR-Agent (primary, GitHub Action) + Gemini Code Assist (secondary, free GitHub App).
+
+### D.2 Security Lifecycle — Implemented (v3.1)
+
+Moved to Section 6.11. SSDF-lite baseline: GitHub secret scanning, Dependabot, Semgrep Community. ADR template updated with Security Considerations field. DoD updated with security scan requirements.
+
+### D.3 P2/P3 Steelman Items — Implemented (v3.2, carried to v4.0)
+
+All P2 and P3 recommendations from the 3-way red team review carried forward into v4.0:
+
+- **Blocker detection** → Section 3.1 (aging alerts)
+- **Story decomposition** → Section 6.3 (Jira Conventions) + Phase 3
+- **Tiered testing** → Phase 4 (Testing & Quality)
+- **Breach post-mortem** → Section 7.3 (Breach Classification)
+- **DORA + flow metrics** → Phase 7 (Weekly Reflection)
+- **DoD/release gate separation** → Section 6.6
+- **Monthly roadmap review** → Section 3.2 (Cadenced Events)
+- **Memory schema & cleanup** → Section 6.12
+
+### D.4 v4.0 Methodology Pivot — Implemented
+
+Research-driven methodology change based on 5-source synthesis (see `sop-v4-methodology-recommendations.md`):
+
+- **R1: Continuous flow** → Section 3 (Workflow Lifecycle) replaces Sprint Lifecycle
+- **R2: Cadenced events** → Section 3.2 (daily async + weekly reflection replaces 4 sprint ceremonies)
+- **R3: Pull-based replenishment** → Phase 3 (continuous pull replaces sprint planning)
+- **R4: Flow metrics** → Phase 7 (cycle time/throughput/WIP age replace velocity/story points)
+- **R5: Risk-lane review** → Section 7.4 (3-lane review model with circuit breaker)
+- **R6: Spec-first** → Phase 2 step 5 + DoR update (spec approved before implementation for M+ stories)
+- **R7: Workflow states** → Section 3.1 (7-state Jira workflow with aging alerts)
+- **R8: Task sizing** → Section 6.3 (single-function scope, 3-file threshold)
+- **R10: Session management** → Section 6.13 (context budget, HANDOVER.md)
+- **R11: TDD default** → Phase 4 (write tests first, implement to pass)
+- **R12: CLAUDE.md optimization** → Appendix C rewrite
+
+### D.5 v4.1 Engineering Standards — Implemented
+
+Final audit based on 3-source research synthesis (see `sop-v4-final-audit-recommendations.md`):
+
+- **R1: Engineering standards** → Sections 6.14–6.25 (language stack, architecture invariants, Python/TS/VBA/Bash standards, pattern library, dependency management, AI guardrails, documentation-as-prompt, CI/CD pipeline, pre-commit hooks, AI anti-patterns, CLAUDE.md coding template)
+- **R2: CLAUDE.md coding standards** → Appendix C updated with ~20 coding rules (commands, hard constraints, patterns, structure)
+- **R3: Cognitive load management** → Section 1 (Flow Guardian responsibility)
+- **R4: PR review load metric** → Phase 7 metrics
+- **R5: Aging alert escalation** → Section 3.1 (escalation rules beyond passive alerts)
+- **R6: MUST/SHOULD/MAY tiering** → Applied to §6.1, §6.8, §6.9, §6.2–6.7
