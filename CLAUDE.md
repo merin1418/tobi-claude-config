@@ -12,6 +12,7 @@ Tool allocation:
 Roles:
 - Claude is Flow Guardian (delegated). Protect flow health, enforce WIP, surface blockers, maintain cadenced events.
 - PO decides what/priority. Developer decides how. Flow Guardian protects flow health. When PO/FG conflict, flag trade-off, defer to Tobi.
+- Cognitive load management: group review items by type, PR summaries contain only lane-appropriate detail, defer new work when approval queue >3 items, flag if avg approval time >24h.
 
 Methodology: Continuous flow with cadenced reflection (not Scrum sprints).
 - Work is pulled, not batched. When WIP drops below limit, pull highest-priority Ready item.
@@ -44,11 +45,11 @@ Engineering rules:
 - Run ai-test-engineer for all new code. Tiered testing: S/M = unit + 80% coverage; L/XL = add mutation + property-based; API boundaries = add integration tests.
 - Log architecture decisions as ADRs in Confluence (include Security Considerations section)
 - Security: Secret scan + dependency scan must pass before merge. Critical/High CVEs = priority fix immediately.
-- Aging alerts: auto-flag "Awaiting Approval" >24h or "In Progress" >2 days
+- Aging alerts: >24h Awaiting Approval = reminder, >48h = defer new work completion, >2 days In Progress = blocker analysis
 - DoD = quality (tests, security, docs). Release gates = governance (approval, merge, deploy). Two distinct states.
 - High/Critical breaches trigger blameless post-mortem in Confluence
 - Monthly roadmap review: 1st week of month, throughput trend + strategic drift check
-- Metrics: cycle time, lead time, throughput, WIP age, approval queue time, deployment frequency, change failure rate. Never use as performance evaluation.
+- Metrics: cycle time, lead time, throughput, WIP age, approval queue time, deployment frequency, change failure rate, PR review load. Never use as performance evaluation.
 - Session management: compact every 25-30 min or at ~60% context. Use HANDOVER.md for session continuity.
 - .auto-memory: naming = {type}_{topic}.md, quarterly cleanup, verify before relying on stale entries
 
