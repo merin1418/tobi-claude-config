@@ -2,7 +2,7 @@
 
 **Date:** April 1, 2026
 **Owner:** Tobi Koyejo
-**Version:** 4.0
+**Version:** 4.1
 **Purpose:** CLAUDE.md-ready instructions governing how Claude operates as Tobi's engineer across all surfaces — Cowork, Claude Code, Claude Desktop — using continuous flow with cadenced reflection, powered by GitHub, Atlassian (Jira/Confluence), and Notion.
 
 ---
@@ -47,6 +47,12 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 **Operating principle:** Tobi steers, Claude executes. Claude never sends, publishes, or deploys without explicit approval unless the action is classified as Tier 1 (autonomous) in the approval protocol.
 
 **Role boundary rule:** Product Owner (Tobi) decides *what* gets built and in what *priority*. Developer (Claude) decides *how* to implement. Flow Guardian (Claude, delegated) protects flow health — WIP limits, queue visibility, cadenced reflection. When PO and Flow Guardian roles conflict (e.g., Tobi wants to break WIP limit), Claude flags the trade-off explicitly but defers to Tobi's final call.
+
+**Cognitive load management (Flow Guardian responsibility):**
+- Present review items grouped by type (all code reviews together, all docs together) to minimize context switching
+- Each PR summary contains only the information needed for that lane's review level — no extraneous detail
+- When approval queue exceeds 3 items, defer new work completion until queue drains (WIP limit applies to review queue, not just In Progress)
+- Flag if Tobi's average approval time exceeds 24h as a leading indicator of overload
 
 ---
 
@@ -155,7 +161,11 @@ Backlog → Ready → In Progress → In Review → Awaiting Approval → Done �
 | **Done** | DoD met (Section 6.6) | Release gate cleared | Claude (transitions) |
 | **Released** | Deploy approval + deploy checklist complete | In production | Tobi (approves deploy) |
 
-**Aging alerts:** "Awaiting Approval" >24h and "In Progress" >2 days trigger auto-flagging with recommended action. "Blocked" flag requires documented blocker reason.
+**Aging alerts and escalation:**
+- "Awaiting Approval" >24h → Claude surfaces reminder with prioritized review queue
+- "Awaiting Approval" >48h → Claude defers completing new stories until queue drains (review-queue WIP limit)
+- "In Progress" >2 days → Claude surfaces blocker analysis with recommended action (decompose, de-scope, or request input)
+- "Blocked" flag requires documented blocker reason
 
 ### 3.2 Cadenced Events
 
@@ -360,6 +370,7 @@ This closes the AI self-validation gap (98.6% self-assessed valid vs 69% indepen
    - **Blocked time:** total hours items spent with Blocked flag
    - **Deployment frequency:** how often code reaches main (measures delivery cadence)
    - **Change failure rate:** % of deployments causing rollback or hotfix (measures quality)
+   - **PR review load:** PRs reviewed per week (leading indicator for reviewer saturation — AI produces ~98% more PRs, making reviewer throughput the binding constraint)
    - Bug/defect rate
    - Test coverage delta
 
@@ -454,10 +465,10 @@ main                    ← production-ready, protected
 ```
 
 **Rules:**
-- Branch names use kebab-case
-- Always include Jira key when a ticket exists
-- Feature branches merge to `main` (or `develop` if used) via PR
-- No direct commits to `main`
+- **MUST:** Branch names use kebab-case
+- **MUST:** Always include Jira key when a ticket exists
+- **MUST:** Feature branches merge to `main` (or `develop` if used) via PR
+- **MUST:** No direct commits to `main`
 
 ### 6.2 Commit Message Format
 
@@ -582,24 +593,24 @@ Every PR to `main` triggers an automated CI pipeline via GitHub Actions (free ti
 
 1. **Build verification** — project compiles/installs cleanly
 2. **Unit test suite** — all tests pass
-3. **Linting** — enforced via project-specific linter configuration (ruff for Python, ESLint for JS/TS). ⚠️ *Placeholder: specific linting standards to be defined in a future Engineering Standards section per project.*
+3. **Linting** — enforced via project-specific linter configuration (ruff for Python per §6.16, ESLint for JS/TS per §6.17). See §6.22 for full CI/CD pipeline specification and §6.23 for pre-commit hook configuration.
 4. **Secret scanning** — GitHub native push protection (free)
 5. **Dependency scanning** — Dependabot alerts (free, built into GitHub)
 
 **Rules:**
-- CI must pass before a PR can be reviewed
-- Branch protection blocks merge if CI fails (see Section 6.9)
-- Claude builds the GitHub Actions YAML per project needs
-- CI results are linked in every PR summary (Phase 6)
+- **MUST:** CI must pass before a PR can be reviewed
+- **MUST:** Branch protection blocks merge if CI fails (see Section 6.9)
+- **SHOULD:** Claude builds the GitHub Actions YAML per project needs
+- **MUST:** CI results are linked in every PR summary (Phase 6)
 
 ### 6.9 Branch Protection (Enforced via GitHub)
 
 Main branch protection rules (configured in GitHub repo settings):
 
-- **Require pull request** before merging — no direct pushes to `main`
-- **Require at least 1 approval** (Tobi) before merge
-- **Require status checks to pass** — CI pipeline from Section 6.8
-- **No force pushes** to `main`
+- **MUST:** Require pull request before merging — no direct pushes to `main`
+- **MUST:** Require at least 1 approval (Tobi) before merge
+- **MUST:** Require status checks to pass — CI pipeline from Section 6.8
+- **MUST:** No force pushes to `main`
 
 This converts the approval requirements from Section 7.2 into system-enforced controls rather than relying solely on manual discipline. Accidental merges to `main` are technically prevented.
 
@@ -709,11 +720,864 @@ type: {user | feedback | project | reference}
 
 **Why "Failed approaches" matters:** Git commits capture what changed but not what was tried and abandoned. This section prevents the next session from repeating dead ends — the single most valuable handoff field for AI session continuity.
 
+### 6.14 Approved Language Stack
+
+**AI-generated code without quality guardrails increases bug density 35–40% within six months.** Each language occupies a defined lane. The "when NOT to use" column prevents the most common AI pattern of reaching for the wrong language.
+
+| Language | Lane | When to use | When NOT to use | AI-specific benefit |
+|----------|------|-------------|-----------------|---------------------|
+| **Python** | Primary / default | Skills, MCP servers, automation, data pipelines, CLI tools, backend APIs, anything that doesn't run in a browser | Never for browser-rendered code | Richest type-checking ecosystem (mypy strict + Pydantic); LLMs produce highest-quality Python output due to training data density |
+| **TypeScript** | Frontend only | React artifacts, HTML dashboards, browser-rendered interactive components | Backend services, CLI tools, data processing, build scripts | `strict: true` + `noUncheckedIndexedAccess` catches AI's most common assumption errors |
+| **VBA** | Microsoft 365 only | Excel macros, PowerPoint automation, Word document generation | Anything outside the Office object model | Minimal lane — constrain AI to prevent scope creep |
+| **Bash** | Glue only | CI/CD scripts, pre-commit hooks, deploy scripts, one-liners under ~50 lines | Anything with branching logic, error recovery, or string manipulation exceeding ~50 lines — rewrite in Python | `set -euo pipefail` + ShellCheck catch the quoting and variable-expansion errors AI generates most frequently |
+
+**MUST: Language selection rule.** If a task could be implemented in Python or TypeScript, it is Python. TypeScript enters the stack only when the deliverable renders in a browser. Enforced by code review; CLAUDE.md instruction.
+
+**Confidence level:** Strong evidence — empirical studies show LLMs produce highest-quality code for languages with the most training data (Python > TypeScript > VBA/Bash).
+
+### 6.15 Architecture Invariants
+
+These are structural rules, not aspirational principles. Each has a detection mechanism.
+
+#### 6.15.1 File size limits
+
+**MUST: No Python file exceeds 400 lines. No TypeScript file exceeds 400 lines.**
+
+150–500 lines is the sweet spot where AI agents hold entire file context without truncation and generate accurate diffs. Above 500 lines, AI makes substantially more errors. The 400-line limit sits inside the productive zone while leaving headroom.
+
+- **Enforced by:** Pre-commit hook + CI gate (see §6.23)
+- **Confidence:** Moderate — consistent practitioner reports, no controlled study
+
+#### 6.15.2 Function complexity limits
+
+**MUST: Cyclomatic complexity ≤ 10 per function. Max 50 statements per function.**
+
+AI generates deeply nested functions at 8× the rate of human developers (CodeRabbit, 2026). NIST recommends a complexity ceiling of 10 for testable code.
+
+- **Enforced by:** Ruff rule `C901` (complexity) + `PLR0915` (statements) + Xenon pre-commit hook
+- **Confidence:** Strong — NIST standard; CodeRabbit empirical data
+
+#### 6.15.3 Module dependency direction
+
+**MUST: Import direction flows top-down: API → Services → Domain → Infrastructure. No reverse imports. No circular dependencies.**
+
+- **Enforced by:** `import-linter` in CI (see §6.22)
+- **Confidence:** Strong — import-linter catches violations deterministically
+
+#### 6.15.4 No new patterns without approval
+
+**MUST: AI must not introduce a new library, architectural pattern, or utility abstraction if an equivalent exists in the codebase.**
+
+"Agentic drift" — where AI reimplements existing concepts because it can't see them in context — is the direct mechanism of codebase entropy.
+
+- **Enforced by:** CLAUDE.md instruction + `deptry` for dependency mismatches + human review for new `import` statements
+- **Confidence:** Strong — multiple practitioner reports
+
+#### 6.15.5 Typed data models over raw dicts
+
+**MUST: All data structures at module boundaries use dataclasses or Pydantic models. No `dict[str, Any]` at function signatures.**
+
+Typed models prevent disagreements between AI-generated functions about data structure at compile time, not at runtime.
+
+- **Enforced by:** mypy strict (`disallow_any_generics = true`) + code review
+- **Confidence:** Strong — expert practitioner evidence (honnibal.dev) + type-constrained decoding studies (54.8–75.3% reduction in compilation errors)
+
+### 6.16 Python Standards
+
+#### 6.16.1 Type checking — mypy strict
+
+**MUST: All Python code passes `mypy --strict`.** Type errors account for 33.6% of failed LLM-generated programs. Use Pydantic `BaseModel` for all external data boundaries.
+
+```toml
+# pyproject.toml
+[tool.mypy]
+python_version = "3.12"
+strict = true
+incremental = true
+warn_return_any = true
+warn_unused_configs = true
+no_implicit_optional = true
+no_implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = ["pandas.*", "numpy.*"]
+ignore_missing_imports = true
+```
+
+- **Enforced by:** Pre-commit hook + CI gate
+- **Confidence:** Strong — empirical (TyFlow, ETH Zurich type-constrained decoding study)
+
+#### 6.16.2 Linting and formatting — ruff
+
+**MUST: All Python code passes `ruff check` and `ruff format`.** Ruff replaces black, flake8, isort, and pyupgrade in a single tool running 10–100× faster.
+
+```toml
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",     # pycodestyle
+    "F",           # Pyflakes — unused imports (AI's #1 artifact)
+    "I",           # isort
+    "B",           # bugbear — mutable defaults (B006), bare except (B001)
+    "UP",          # pyupgrade — AI generates outdated syntax from training data
+    "C4",          # comprehensions
+    "SIM",         # simplify — AI over-complicates logic
+    "RET",         # return consistency
+    "PTH",         # pathlib over os.path
+    "S",           # bandit security — eval(), exec(), shell=True
+    "C90",         # mccabe complexity
+    "ERA",         # eradicate — catches commented-out code AI leaves behind
+    "T20",         # print statements — AI debugging leftovers
+    "FIX",         # flags TODO/FIXME (AI-left placeholders)
+    "RUF",         # ruff-specific
+    "PERF",        # performance anti-patterns
+    "A",           # builtins shadowing — AI shadows list, dict, type, id
+    "LOG", "G",    # logging best practices
+    "PIE",         # misc good practices
+    "TID",         # tidy imports
+    "TC",          # TYPE_CHECKING block enforcement
+    "N",           # PEP 8 naming
+]
+ignore = ["E501", "S101"]
+fixable = ["F401", "I", "UP", "W", "RUF100", "C4", "SIM"]
+unfixable = ["ERA", "T20"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-statements = 50
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**/*.py" = ["S101", "T20", "B011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["myproject"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+```
+
+Key AI-specific rules:
+
+| Rule | AI failure mode it catches |
+|------|---------------------------|
+| `F401` | Unused imports — AI imports everything it "might" need |
+| `F841` | Unused variables — AI assigns then never uses |
+| `B006` | Mutable default arguments `def f(items=[])` |
+| `ERA` | Commented-out code AI leaves from prior iterations |
+| `T20` | `print()` debugging statements AI forgets to remove |
+| `S` | `eval()`, `exec()`, hardcoded passwords, `shell=True` |
+| `UP` | Python 2/3.6-era patterns from training data |
+| `A` | Shadowing builtins: `list = [1,2,3]` |
+| `C90` | Deeply nested functions (AI nests at 8× human rate) |
+
+- **Enforced by:** Pre-commit hook + CI gate
+- **Confidence:** Strong — ruff used by FastAPI, Dagster, CPython; rule selection based on CodeRabbit's empirical AI error profiles
+
+#### 6.16.3 Security scanning — bandit
+
+**MUST: All Python code passes bandit scan.** AI-generated code uses `eval()`, `exec()`, hardcoded credentials, and insecure deserialization at higher rates than human code. Bandit v1.9+ includes AI/ML-specific checks.
+
+```toml
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+```
+
+- **Enforced by:** Pre-commit hook + CI gate
+- **Confidence:** Strong — established SAST tool
+
+#### 6.16.4 Project structure — src layout
+
+**SHOULD: All Python projects use the `src/` layout.**
+
+```
+project-name/
+├── src/
+│   └── project_name/
+│       ├── __init__.py
+│       ├── main.py
+│       ├── config.py
+│       ├── models/           # Pydantic/data models
+│       ├── services/         # Business logic
+│       ├── api/              # Routes/endpoints
+│       └── utils/            # Shared helpers
+├── tests/
+│   ├── conftest.py
+│   ├── unit/
+│   └── integration/
+├── pyproject.toml
+├── CLAUDE.md
+├── README.md
+└── uv.lock
+```
+
+- **Enforced by:** CLAUDE.md instruction + project template
+- **Confidence:** Strong — official PyPA recommendation
+
+#### 6.16.5 Testing conventions
+
+**MUST: 80% line coverage minimum. Tests mirror source structure. Descriptive test names.**
+
+AI-generated tests must be written against specifications, not against the implementation — otherwise they are tautological.
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--import-mode=importlib",
+    "--strict-markers",
+    "-ra",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks integration tests",
+]
+```
+
+- **Enforced by:** CI coverage gate + CLAUDE.md conventions
+- **Confidence:** Strong — Dagster production experience; pytest official docs
+
+### 6.17 TypeScript Standards
+
+TypeScript occupies the frontend-only lane.
+
+#### 6.17.1 Strict compiler configuration
+
+**MUST: All TypeScript code compiles with strict mode plus beyond-strict flags.**
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": false,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+- **Enforced by:** CI gate (`npx tsc --noEmit`)
+- **Confidence:** Strong — TypeScript team direction for TS 6.0 defaults
+
+#### 6.17.2 ESLint configuration
+
+**MUST: No `any` types. No floating promises. Max 50-line functions.**
+
+```javascript
+// eslint.config.mjs — AI-specific rules only
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import reactHooks from 'eslint-plugin-react-hooks';
+
+export default [
+  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
+  eslint.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    languageOptions: {
+      parserOptions: { projectService: true },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      'max-lines-per-function': ['warn', { max: 60, skipBlankLines: true, skipComments: true }],
+      'complexity': ['warn', 10],
+    },
+  },
+];
+```
+
+- **Enforced by:** CI gate (`npx eslint . --max-warnings 0`)
+- **Confidence:** Strong — typescript-eslint official documentation
+
+#### 6.17.3 Frontend pattern defaults
+
+**SHOULD:** Functional components only. No class components. **Tailwind CSS** for styling. **Zustand** for shared/global state. `useState`/`useReducer` for local state. TanStack Query for server state. One component per file.
+
+- **Enforced by:** CLAUDE.md instruction + ESLint rules
+- **Confidence:** Moderate — practitioner consensus
+
+#### 6.17.4 VBA critical rules (Microsoft 365 lane)
+
+**MUST:** `Option Explicit` as first line of every module. **MUST:** `On Error GoTo ErrHandler` pattern — never `On Error Resume Next` as a general strategy. **SHOULD:** Explicit variable typing. Always qualify object references fully.
+
+- **Enforced by:** CLAUDE.md instruction + code review
+- **Confidence:** Moderate
+
+#### 6.17.5 Bash critical rules (glue lane)
+
+**MUST:** Every script starts with `#!/usr/bin/env bash` and `set -euo pipefail`. **MUST:** All scripts pass ShellCheck. **MUST:** All variable expansions double-quoted. **MUST:** Scripts over ~50 lines rewrite in Python.
+
+```yaml
+# ShellCheck in CI
+- name: ShellCheck
+  uses: ludeeus/action-shellcheck@master
+  with:
+    scandir: './scripts'
+```
+
+- **Enforced by:** ShellCheck pre-commit + CI gate
+- **Confidence:** Strong
+
+### 6.18 Pattern Library
+
+Static, always-available patterns outperform dynamic lookup — Vercel's eval data demonstrated **100% task pass rate** with compressed docs index versus 53% without context. One real code snippet beats three paragraphs of style description.
+
+#### 6.18.1 Error handling — Result pattern
+
+**SHOULD: Use a Result type for expected errors. Reserve exceptions for truly unexpected conditions.**
+
+```python
+# src/project_name/core/result.py — THE canonical error handling pattern
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Generic, TypeVar, Union
+
+T = TypeVar("T")
+E = TypeVar("E")
+
+@dataclass(frozen=True, slots=True)
+class Ok(Generic[T]):
+    value: T
+    def is_ok(self) -> bool: return True
+    def is_err(self) -> bool: return False
+    def unwrap(self) -> T: return self.value
+
+@dataclass(frozen=True, slots=True)
+class Err(Generic[E]):
+    error: E
+    def is_ok(self) -> bool: return False
+    def is_err(self) -> bool: return True
+    def unwrap(self) -> None: raise RuntimeError(f"Called unwrap on Err: {self.error}")
+
+Result = Union[Ok[T], Err[E]]
+```
+
+- **Enforced by:** CLAUDE.md instruction (point to `core/result.py`)
+- **Confidence:** Moderate — practitioner consensus; type-visibility argument is strong
+
+#### 6.18.2 Configuration loading
+
+**SHOULD: Pydantic `BaseSettings` for all configuration. No raw `os.environ` access.**
+
+```python
+# src/project_name/config.py — THE canonical config pattern
+from pydantic_settings import BaseSettings
+from pydantic import Field
+
+class Settings(BaseSettings):
+    model_config = {"env_prefix": "APP_", "env_file": ".env"}
+    database_url: str = Field(description="PostgreSQL connection string")
+    api_key: str = Field(description="External API key")
+    debug: bool = Field(default=False, description="Enable debug mode")
+    log_level: str = Field(default="INFO", description="Logging level")
+
+settings = Settings()
+```
+
+- **Enforced by:** CLAUDE.md instruction + ruff `S105`/`S106` catches hardcoded secrets
+- **Confidence:** Strong — Pydantic Settings is de facto standard
+
+#### 6.18.3 Logging
+
+**SHOULD: `structlog` for structured JSON logging. One logger per module. No `print()` in production code.**
+
+```python
+# src/project_name/core/logging.py — THE canonical logging pattern
+import structlog
+
+def get_logger(name: str) -> structlog.stdlib.BoundLogger:
+    return structlog.get_logger(name)
+
+# Usage:
+from project_name.core.logging import get_logger
+logger = get_logger(__name__)
+```
+
+- **Enforced by:** Ruff `T20` (catches `print()`) + CLAUDE.md instruction
+- **Confidence:** Moderate — structlog widely adopted
+
+#### 6.18.4 HTTP client
+
+**SHOULD: `httpx` for all HTTP requests. Typed response parsing via Pydantic.**
+
+```python
+# src/project_name/core/http.py — THE canonical HTTP pattern
+import httpx
+from pydantic import BaseModel
+from project_name.core.result import Result, Ok, Err
+
+async def api_get(
+    url: str, response_model: type[BaseModel], *, timeout: float = 30.0,
+) -> Result[BaseModel, str]:
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            return Ok(response_model.model_validate(response.json()))
+    except httpx.HTTPStatusError as e:
+        return Err(f"HTTP {e.response.status_code}: {e.response.text[:200]}")
+    except httpx.RequestError as e:
+        return Err(f"Request failed: {e}")
+```
+
+- **Enforced by:** CLAUDE.md instruction
+- **Confidence:** Moderate — httpx is the modern async-capable replacement for requests
+
+#### 6.18.5 CLI argument parsing
+
+**SHOULD: `typer` for CLI tools. Pydantic for validation.**
+
+```python
+# src/project_name/cli.py — THE canonical CLI pattern
+import typer
+app = typer.Typer(help="Project CLI tools")
+
+@app.command()
+def process(
+    input_path: str = typer.Argument(help="Path to input file"),
+    output_path: str = typer.Option("output.json", help="Output path"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+) -> None:
+    """Process input data and write results."""
+```
+
+- **Enforced by:** CLAUDE.md instruction
+- **Confidence:** Moderate — typer built on Click; Pydantic integration is native
+
+### 6.19 Dependency Management
+
+#### 6.19.1 Python dependencies — uv
+
+**MUST: Use `uv` for all Python dependency and environment management.** As of early 2026, uv has surpassed Poetry in monthly PyPI downloads (~75M vs ~66M) and runs 10–100× faster.
+
+**MUST: `uv.lock` committed to version control.** Pins every package to exact versions with cryptographic hashes.
+
+**MUST: All new dependency additions require human approval.** 5.2% of packages from commercial LLMs are hallucinated (don't exist on PyPI). "Slopsquatting" — attackers registering hallucinated package names — is an active supply chain attack vector.
+
+```toml
+# pyproject.toml — dependency specification
+[project]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0",
+    "httpx>=0.24",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+    "bandit[toml]>=1.9",
+    "import-linter>=2.0",
+    "deptry>=0.20",
+]
+```
+
+**MUST rules:**
+- Use `>=` in `pyproject.toml`; let `uv.lock` pin exact versions
+- Run `uv sync --frozen` in CI — fails if lockfile doesn't match pyproject.toml
+- Every new dependency must be verified to exist on PyPI before `uv add`
+- `deptry` runs in CI to catch missing, unused, transitive, and misplaced dependencies
+
+- **Enforced by:** CI gate (`uv sync --frozen` + `deptry`) + CLAUDE.md instruction
+- **Confidence:** Strong — hallucinated package study is peer-reviewed; uv adoption data from PyPI Stats
+
+#### 6.19.2 TypeScript dependencies — npm
+
+**MUST: `package-lock.json` committed.** `npm ci` in CI (not `npm install`). **MUST: AI must not add new npm packages without human approval.**
+
+- **Enforced by:** CI gate (`npm ci`) + CLAUDE.md instruction
+- **Confidence:** Strong — same hallucinated-dependency risk applies to npm
+
+### 6.20 AI-Specific Guardrails
+
+These constraints exist solely because an AI writes the code. They have no equivalent in traditional development SOPs.
+
+#### 6.20.1 No type broadening during debugging
+
+**MUST NOT: AI must not broaden function signatures (`Optional`, `Union`, `Any`, `as any`) to make code compile. Fix the root cause instead.**
+
+- **Enforced by:** mypy strict + CLAUDE.md instruction + ruff `ANN` rules
+- **Confidence:** Strong — expert practitioner evidence (Matthew Honnibal/spaCy)
+
+#### 6.20.2 No silent exception swallowing
+
+**MUST NOT: No bare `except:` clauses. No `except Exception: pass`. Every catch block must handle, rethrow, or return a Result error.**
+
+- **Enforced by:** Ruff rules `E722`, `B001`, `BLE001` + CLAUDE.md instruction
+- **Confidence:** Strong — CodeRabbit empirical data (AI has 2× more error handling omissions)
+
+#### 6.20.3 Existing utility discovery before creation
+
+**SHOULD: Before creating any utility function, search the codebase for existing implementations.**
+
+- **Enforced by:** CLAUDE.md instruction + `jscpd --min-lines 5` in CI
+- **Confidence:** Moderate — first-principles + practitioner reports
+
+#### 6.20.4 No placeholder code in commits
+
+**MUST: No `TODO`, `FIXME`, `HACK`, `PLACEHOLDER`, `NotImplementedError`, or `...` stubs in committed source code under `src/`.**
+
+- **Enforced by:** Pre-commit hook + CI gate + ruff `FIX` rules
+- **Confidence:** Moderate — consistent practitioner experience
+
+#### 6.20.5 Descriptive naming — no abbreviations
+
+**SHOULD: All names must be descriptive. No abbreviations beyond universally understood ones (e.g., `id`, `url`, `http`). Prefer `calculate_monthly_revenue` over `calc_rev`.**
+
+Descriptive names achieve 34.2% exact match rate vs 16.6% for obfuscated names — a 2× improvement in AI code completion accuracy (Yakubov, 2025).
+
+- **Enforced by:** CLAUDE.md instruction + ruff `N` rules + code review
+- **Confidence:** Strong — controlled empirical study
+
+### 6.21 Documentation-as-Prompt Standards
+
+#### 6.21.1 Docstring format — Google style
+
+**SHOULD: Google-style docstrings for all public functions. One-line docstrings for private helpers.**
+
+```python
+def create_user(request: UserCreate, db: Database) -> Result[User, str]:
+    """Create a new user from a validated request.
+
+    Checks for duplicate emails before insertion. Uses the Result
+    pattern — returns Err on business rule violations, never throws.
+
+    Args:
+        request: Validated user creation data.
+        db: Database interface (accepts fakes for testing).
+
+    Returns:
+        Ok(User) on success, Err(str) with human-readable message on failure.
+    """
+```
+
+- **Enforced by:** CLAUDE.md instruction
+- **Confidence:** Moderate — Google style is consensus recommendation
+
+#### 6.21.2 README structure for AI consumption
+
+**SHOULD: Every project README includes a "For AI Agents" section.**
+
+```markdown
+## For AI Agents
+
+### Project Structure
+- `src/project_name/core/` — Shared utilities (result.py, logging.py, http.py)
+- `src/project_name/models/` — Pydantic data models
+- `src/project_name/services/` — Business logic
+- `src/project_name/api/` — API routes
+
+### Canonical Patterns
+- Error handling: see `core/result.py` — always use Result, never throw for expected errors
+- HTTP requests: see `core/http.py` — always use api_get/api_post, never raw httpx
+- Config: see `config.py` — always use Settings, never raw os.environ
+- Logging: see `core/logging.py` — always use get_logger, never print()
+```
+
+- **Enforced by:** CLAUDE.md instruction
+- **Confidence:** Moderate — Vercel's eval data supports static context
+
+#### 6.21.3 Comments policy
+
+**SHOULD: Comments explain "why," not "what." No narration of obvious code. Module-level comments explaining design decisions are high-value.**
+
+- **Enforced by:** CLAUDE.md instruction + code review
+- **Confidence:** Moderate — consensus is "why not what"
+
+### 6.22 CI/CD Pipeline Specification
+
+Minimum viable pipeline for solo + AI developer. Four parallel stages plus mutation testing on schedule. Target: **under 3 minutes** for Stages 1–4.
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+
+jobs:
+  # Stage 1: Fast checks (<30s)
+  quality-gate:
+    name: "Quality Gate"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen --dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src/
+      - run: uv run bandit -r src/ -c pyproject.toml
+      - name: AI placeholder check
+        run: |
+          if grep -rn --include="*.py" -E \
+            "(TODO|FIXME|HACK|PLACEHOLDER|raise NotImplementedError)" src/; then
+            echo "::error::AI placeholders detected in source code"
+            exit 1
+          fi
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Stage 2: Tests + Coverage
+  test:
+    name: "Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen --dev
+      - run: |
+          uv run pytest tests/ \
+            --cov=src --cov-report=term-missing \
+            --cov-fail-under=80 -x --tb=short
+
+  # Stage 3: Architecture enforcement
+  architecture:
+    name: "Architecture"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen --dev
+      - run: uv run lint-imports
+      - run: uv run deptry src/
+      - name: File size check
+        run: |
+          find src/ -name "*.py" -exec sh -c '
+            lines=$(wc -l < "$1")
+            if [ "$lines" -gt 400 ]; then
+              echo "::error::$1 has $lines lines (max 400)"
+              exit 1
+            fi
+          ' _ {} \;
+
+  # Stage 4: Frontend (conditional)
+  frontend:
+    name: "Frontend"
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[frontend]') || github.event_name == 'pull_request'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx eslint . --max-warnings 0
+      - run: npx tsc --noEmit
+      - run: npm test -- --coverage --watchAll=false
+
+  # Stage 5: Mutation testing (weekly)
+  mutation:
+    name: "Mutation Testing"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen --dev && uv pip install mutmut
+      - run: uv run mutmut run --paths-to-mutate src/ --CI
+```
+
+**import-linter configuration** (referenced by `lint-imports` above):
+
+```ini
+# .importlinter
+[importlinter]
+root_package = project_name
+
+[importlinter:contract:layers]
+name = Layered architecture
+type = layers
+layers =
+    project_name.api
+    project_name.services
+    project_name.domain
+    project_name.infrastructure
+
+[importlinter:contract:domain-independence]
+name = Domain layer independence
+type = forbidden
+source_modules = project_name.domain
+forbidden_modules =
+    project_name.api
+    project_name.infrastructure
+```
+
+- **Confidence:** Strong — GitHub Actions is standard; tool selections based on evidence from prior sections
+
+### 6.23 Pre-commit Hook Configuration
+
+```yaml
+# .pre-commit-config.yaml
+exclude: '\.venv/|node_modules/|dist/|build/'
+fail_fast: false
+
+repos:
+  # File hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: check-ast
+      - id: debug-statements
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ['--branch', 'main']
+
+  # Secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.3
+    hooks:
+      - id: gitleaks
+
+  # Python lint + format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.5
+    hooks:
+      - id: ruff
+        args: ['--fix', '--exit-non-zero-on-fix']
+      - id: ruff-format
+
+  # Python type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        args: ['--ignore-missing-imports']
+
+  # Complexity
+  - repo: https://github.com/rubik/xenon
+    rev: v0.9.3
+    hooks:
+      - id: xenon
+        args: ['--max-absolute=B', '--max-modules=B', '--max-average=A', '--exclude', '.venv,tests']
+
+  # Dependency hygiene
+  - repo: https://github.com/fpgmaas/deptry
+    rev: 0.25.1
+    hooks:
+      - id: deptry
+
+  # AI placeholder detection
+  - repo: local
+    hooks:
+      - id: ai-placeholder-check
+        name: Detect AI placeholders
+        entry: bash -c 'if grep -rn --include="*.py" -E "(TODO|FIXME|HACK|PLACEHOLDER|raise NotImplementedError)" src/ 2>/dev/null; then echo "AI placeholders detected"; exit 1; fi'
+        language: system
+        pass_filenames: false
+
+      - id: python-file-size
+        name: Python file size limit
+        entry: bash -c 'for f in "$@"; do lines=$(wc -l < "$f"); if [ "$lines" -gt 400 ]; then echo "❌ $f: $lines lines (max 400)"; exit 1; fi; done'
+        language: system
+        files: '\.py$'
+        pass_filenames: true
+```
+
+What each hook catches that's AI-specific:
+
+| Hook | AI failure mode |
+|------|----------------|
+| `check-added-large-files` | AI dumps large generated files or datasets |
+| `check-ast` | Syntactically broken Python from incomplete AI edits |
+| `debug-statements` | AI leaves `breakpoint()`, `pdb.set_trace()` |
+| `gitleaks` | AI generates realistic-looking API keys and passwords |
+| `ruff` | Unused imports, mutable defaults, security issues, `print()` |
+| `mypy` | Type errors (33.6% of AI failures) |
+| `xenon` | Deep nesting (AI nests at 8× human rate) |
+| `deptry` | Hallucinated or undeclared dependencies |
+| `ai-placeholder-check` | Skeleton stubs AI leaves behind |
+| `python-file-size` | Monolithic files that degrade AI edit accuracy |
+
+### 6.24 AI Coding Anti-Patterns
+
+Banned practices with specific detection mechanisms. Each exists because AI generates them more frequently than humans.
+
+| Anti-pattern | Why it's AI-specific | Detection | Tier |
+|---|---|---|---|
+| **Type broadening to fix errors** | LLMs broaden rather than trace root causes; creates cascading divergence | mypy strict + code review | MUST NOT |
+| **Bare/broad exception catching** | AI produces 2× more error handling omissions; swallows errors silently | Ruff E722, B001, BLE001 | MUST NOT |
+| **Dict-based data passing at boundaries** | Different AI-generated functions disagree about dict structure | mypy strict + code review | MUST NOT |
+| **Duplicate utility creation** | Context blindness duplication; AI can't see beyond current file | `jscpd` in CI + code review | MUST NOT |
+| **Hallucinated dependencies** | 5.2% of suggestions are hallucinated; slopsquatting attack vector | `deptry` + `uv sync --frozen` + human approval | MUST NOT |
+| **Placeholder stubs in source** | AI generates skeletons and moves on; accumulates at AI speed | Pre-commit grep + ruff FIX | MUST NOT |
+| **`print()` debugging in production** | AI uses print for debugging and doesn't remove it | Ruff T20 | MUST NOT |
+| **`eval()` / `exec()` / `shell=True`** | AI generates these more frequently than humans; security risk | Ruff S307, S602 + bandit | MUST NOT |
+| **Mutable default arguments** | AI generates this notorious Python pitfall frequently | Ruff B006 | MUST NOT |
+| **Shadowing builtins** | AI names variables after builtins at 2× human rate | Ruff A001, A002 | MUST NOT |
+| **Tautological tests** | Tests verify "what the code does" not "what it should do" | Human review (test-first workflow) | MUST NOT |
+| **Commented-out code** | AI leaves prior iterations as comments | Ruff ERA001 | MUST NOT |
+
+### 6.25 CLAUDE.md Coding Standards Template
+
+~20 rules in the format that produces highest compliance: commands first, then hard constraints, then pattern pointers. Stays within the empirically validated instruction budget of 15–25 critical rules (IFScale benchmark). See Appendix C for the full template text to add to CLAUDE.md.
+
 ---
 
 ## 7. Approval & Safety Protocols
 
 ### 7.1 Existing Protocols (Inherited)
+
 
 These are HARD RULES — violations are classified as breaches:
 
@@ -835,7 +1699,19 @@ Research-driven methodology change based on 5-source synthesis (see `sop-v4-meth
 - **R11: TDD default** → Phase 4 (write tests first, implement to pass)
 - **R12: CLAUDE.md optimization** → Appendix C rewrite
 
-### 8.6 Not Connected (Available in Connector Panel)
+### 8.6 v4.1 Engineering Standards — ✅ Implemented
+
+Final audit based on 3-source research synthesis (see `sop-v4-final-audit-recommendations.md`):
+- **R1: Engineering standards** → Sections 6.14–6.25 (language stack, architecture invariants, Python/TS/VBA/Bash standards, pattern library, dependency management, AI guardrails, documentation-as-prompt, CI/CD pipeline, pre-commit hooks, AI anti-patterns, CLAUDE.md coding template)
+- **R2: CLAUDE.md coding standards** → Appendix C updated with ~20 coding rules (commands, hard constraints, patterns, structure)
+- **R3: Cognitive load management** → Section 1 (Flow Guardian responsibility)
+- **R4: PR review load metric** → Phase 7 metrics
+- **R5: Aging alert escalation** → Section 3.1 (escalation rules beyond passive alerts)
+- **R6: MUST/SHOULD/MAY tiering** → Applied to §6.1, §6.8, §6.9
+
+**SOP frozen until July 2026** unless a break occurs. Next action: convert to skill for cross-surface access.
+
+### 8.7 Not Connected (Available in Connector Panel)
 
 These connectors are visible but not yet connected. Connect when needed:
 
@@ -1009,6 +1885,24 @@ Engineering rules:
 - Metrics: cycle time, lead time, throughput, WIP age, approval queue time, deployment frequency, change failure rate. Never use as performance evaluation.
 - Session management: compact every 25-30 min or at ~60% context. Use HANDOVER.md for session continuity.
 - .auto-memory: naming = {type}_{topic}.md, quarterly cleanup, verify before relying on stale entries
+
+Coding standards (CLAUDE.md commands + hard constraints + patterns):
+- Commands: `uv run ruff check . && uv run ruff format --check .` (lint), `uv run mypy src/` (types), `uv run pytest tests/ -x --tb=short` (test), `uv run lint-imports` (architecture), `uv run deptry src/` (deps), `pre-commit run --all-files` (all hooks)
+- NEVER use `Any`/`any` type — fix the root cause
+- NEVER broaden types (`Optional`, `Union`, `as any`) to make code compile — trace the actual bug
+- NEVER add a new dependency without asking first — hallucinated packages are a real risk
+- NEVER use `except Exception: pass` or bare `except:` — handle, rethrow, or return Result error
+- NEVER use `print()` for debugging — use `get_logger(__name__)` from `core/logging.py`
+- NEVER use `eval()`, `exec()`, or `subprocess(shell=True)`
+- NEVER use raw `dict[str, Any]` at function boundaries — use Pydantic models or dataclasses
+- NEVER leave TODO/FIXME/PLACEHOLDER stubs — implement fully or don't include
+- NEVER commit secrets, API keys, or passwords
+- NEVER create a new utility function if one exists in `core/` or `utils/` — search first
+- Patterns: Result pattern from `core/result.py`, config via `Settings` from `config.py`, HTTP via `core/http.py`, logging via `get_logger(__name__)`
+- Python files max 400 lines, functions max 50 statements, complexity max 10
+- Imports flow top-down: api → services → domain → infrastructure
+- Python for everything unless it runs in a browser. TypeScript frontend only.
+- Google-style docstrings for public functions. Descriptive names, no abbreviations.
 
 Full SOP with phase-by-phase procedures, skill activation map, and standards: `Development and Tech/claude-development-sop.md` — read this file at the start of any dev session.
 </development_sop>

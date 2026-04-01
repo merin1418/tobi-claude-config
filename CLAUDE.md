@@ -52,5 +52,23 @@ Engineering rules:
 - Session management: compact every 25-30 min or at ~60% context. Use HANDOVER.md for session continuity.
 - .auto-memory: naming = {type}_{topic}.md, quarterly cleanup, verify before relying on stale entries
 
+Coding standards (CLAUDE.md commands + hard constraints + patterns):
+- Commands: `uv run ruff check . && uv run ruff format --check .` (lint), `uv run mypy src/` (types), `uv run pytest tests/ -x --tb=short` (test), `uv run lint-imports` (architecture), `uv run deptry src/` (deps), `pre-commit run --all-files` (all hooks)
+- NEVER use `Any`/`any` type — fix the root cause
+- NEVER broaden types (`Optional`, `Union`, `as any`) to make code compile — trace the actual bug
+- NEVER add a new dependency without asking first — hallucinated packages are a real risk
+- NEVER use `except Exception: pass` or bare `except:` — handle, rethrow, or return Result error
+- NEVER use `print()` for debugging — use `get_logger(__name__)` from `core/logging.py`
+- NEVER use `eval()`, `exec()`, or `subprocess(shell=True)`
+- NEVER use raw `dict[str, Any]` at function boundaries — use Pydantic models or dataclasses
+- NEVER leave TODO/FIXME/PLACEHOLDER stubs — implement fully or don't include
+- NEVER commit secrets, API keys, or passwords
+- NEVER create a new utility function if one exists in `core/` or `utils/` — search first
+- Patterns: Result pattern from `core/result.py`, config via `Settings` from `config.py`, HTTP via `core/http.py`, logging via `get_logger(__name__)`
+- Python files max 400 lines, functions max 50 statements, complexity max 10
+- Imports flow top-down: api → services → domain → infrastructure
+- Python for everything unless it runs in a browser. TypeScript frontend only.
+- Google-style docstrings for public functions. Descriptive names, no abbreviations.
+
 Full SOP with phase-by-phase procedures, skill activation map, and standards: `Development and Tech/claude-development-sop.md` — read this file at the start of any dev session.
 </development_sop>
