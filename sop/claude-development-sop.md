@@ -582,7 +582,7 @@ Every PR to `main` triggers an automated CI pipeline via GitHub Actions (free ti
 
 1. **Build verification** — project compiles/installs cleanly
 2. **Unit test suite** — all tests pass
-3. **Linting** — code style enforcement (if applicable to project)
+3. **Linting** — enforced via project-specific linter configuration (ruff for Python, ESLint for JS/TS). ⚠️ *Placeholder: specific linting standards to be defined in a future Engineering Standards section per project.*
 4. **Secret scanning** — GitHub native push protection (free)
 5. **Dependency scanning** — Dependabot alerts (free, built into GitHub)
 
@@ -695,13 +695,19 @@ type: {user | feedback | project | reference}
 ## Session Handover — {date}
 ### What was accomplished
 - {completed items}
-### What's in progress
-- {current state, branch, blockers}
-### Next steps
-- {prioritized list}
-### Key decisions made
-- {decisions and rationale}
+### Files changed (with brief descriptions)
+- {file path} — {what changed and why}
+### Failed approaches (what was tried, why it failed, actual errors)
+- {approach} — {why it failed, error messages if applicable}
+### What's in progress (current state, branch, blockers)
+- {current state, branch name, blockers}
+### Next steps (specific, actionable)
+- {prioritized list with enough context to execute without re-reading prior session}
+### Key decisions made (with rationale)
+- {decision} — {why, what alternatives were considered}
 ```
+
+**Why "Failed approaches" matters:** Git commits capture what changed but not what was tried and abandoned. This section prevents the next session from repeating dead ends — the single most valuable handoff field for AI session continuity.
 
 ---
 
