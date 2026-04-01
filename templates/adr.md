@@ -31,6 +31,14 @@
 **Negative / Trade-offs:**
 - {consequence}
 
+## Security Considerations
+
+- **Threat model:** {What threats does this decision introduce, mitigate, or leave unchanged?}
+- **Auth/Authz:** {How does this affect authentication or authorization? N/A if none.}
+- **Data classification:** {What data does this touch? PII, secrets, credentials, public?}
+- **Attack surface:** {Does this expand or reduce the attack surface? New endpoints, dependencies, integrations?}
+- **Dependency risk:** {Any new dependencies? Known CVE history? Maintenance status?}
+
 ## Follow-up Actions
 
 - [ ] {action item}
