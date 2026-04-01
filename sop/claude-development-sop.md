@@ -533,6 +533,13 @@ T-shirt sizes drive decomposition decisions and testing tier selection. They are
 - Meeting notes and decisions
 - Product roadmaps
 
+**Do NOT use Notion for:**
+- Issue tracking (use Jira — source of truth for stories/bugs/tasks)
+- CRM / BD prospect tracking (use PocketBase + HTML dashboard)
+- Code documentation (use Confluence + repo)
+- Architecture decisions (use Confluence ADRs)
+- HHN operations (use Monday.com)
+
 **Why Notion for flow dashboards:** Notion's MCP gives Claude 16 tools including database creation with typed schemas, 10 view types (board, table, calendar, timeline, chart, dashboard), and property-level updates. Flow tracking requires structured, queryable data with multiple views — Notion handles this natively. Confluence pages are flat documents with no structured data, views, or formulas. See ADR in this document's approval history for full evaluation.
 
 ### 6.5 Confluence Conventions
