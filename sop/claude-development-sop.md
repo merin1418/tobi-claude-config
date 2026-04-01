@@ -2,7 +2,7 @@
 
 **Date:** April 1, 2026
 **Owner:** Tobi Koyejo
-**Version:** 2.0
+**Version:** 3.0
 **Purpose:** CLAUDE.md-ready instructions governing how Claude operates as Tobi's engineer across all surfaces — Cowork, Claude Code, Claude Desktop — using Agile Scrum with GitHub, Atlassian (Jira/Confluence), and Notion.
 
 ---
@@ -11,7 +11,9 @@
 
 Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. This SOP defines the standard operating procedures for every phase of the software development lifecycle: how work gets planned in Jira, sprint ceremonies run in Notion, code versioned in GitHub, technical docs housed in Confluence, and quality enforced through Claude's skill library. Every ceremony, artifact, and handoff maps to a specific connected MCP, skill, or tool.
 
-**Tool allocation principle:** Jira = issue tracking source of truth. Notion = sprint ceremonies (planning, retros, velocity). Confluence = technical documentation (ADRs, runbooks, specs). GitHub = code and version control. Monday.com = HHN operations only (separate scope). PocketBase + HTML dashboard = BD CRM (separate scope).
+**Tool allocation principle:** Jira = issue tracking source of truth. Notion = sprint ceremonies (planning, retros, velocity) — derived from Jira, not independently maintained. Confluence = technical documentation (ADRs, runbooks, specs). GitHub = code and version control (with CI/CD via GitHub Actions and branch protection on main). Monday.com = HHN operations only (separate scope). PocketBase + HTML dashboard = BD CRM (separate scope).
+
+**Sprint discipline:** Every sprint has a Sprint Goal. Every story meets a Definition of Ready before entering sprint. Velocity is measured in story points (S=1, M=2, L=3, XL=5), not story count. WIP limit: 1 story In Progress at a time.
 
 ---
 
@@ -130,18 +132,20 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 
 **Methodology:** Scrum with 1-week sprints (adjustable per project).
 **Hierarchy:** Initiative → Epic → User Story (Atlassian standard, already in use per LinkedIn BD project).
+**Sprint Goal:** Required. Every sprint has a one-sentence, outcome-oriented Sprint Goal. Format: "By the end of this sprint, [outcome] so that [value]." All mid-sprint scope changes must reference whether they help or harm the Sprint Goal.
+**Artifact authority:** Jira is authoritative for all issue state. Notion sprint DBs are derived views that Claude regenerates from Jira queries — not independently maintained. When Jira and Notion conflict, Jira wins; Claude corrects Notion.
 
 ### 3.1 Ceremony Map
 
 | Ceremony | When | Tool | Claude's Role | Skill(s) |
 |----------|------|------|---------------|----------|
-| **Backlog Refinement** | Async, pre-sprint | Jira | Draft stories, acceptance criteria, estimates | `product-management:write-spec` |
-| **Sprint Planning** | Sprint start | Notion (sprint DB) + Jira (issues) | Build sprint database, board/timeline views, capacity check, link to Jira issues | `product-management:sprint-planning`, `operations:capacity-plan` |
-| **Daily Standup** | Daily (async) | Jira + Git | Generate standup from recent commits, PR status, Jira transitions | `engineering:standup` |
-| **Implementation** | During sprint | GitHub + Bash + File Tools | Write code, build skills/MCPs, run tests | `engineering:*`, `ai-test-engineer` |
-| **Code Review** | Per PR | GitHub Integration + Bash | Self-review against checklist, prep for Tobi's review | `engineering:code-review` |
-| **Sprint Review** | Sprint end | Notion (metrics) + Confluence (writeup) | Sprint velocity chart in Notion, demo writeup in Confluence | `product-management:stakeholder-update` |
-| **Retrospective** | Sprint end | Notion (retro DB) | Action item database with Status/Owner/Due Date, cross-sprint queryable | `operations:process-optimization` |
+| **Backlog Refinement** | Async, pre-sprint (~1h/week) | Jira | Draft stories, acceptance criteria, estimates. Verify each story meets Definition of Ready. | `product-management:write-spec` |
+| **Sprint Planning** | Sprint start | Notion (sprint DB) + Jira (issues) | Propose Sprint Goal (Tobi approves). Build sprint database, board/timeline views, capacity check (3-sprint rolling avg), link to Jira issues. | `product-management:sprint-planning`, `operations:capacity-plan` |
+| **Daily Standup** | Daily (async) | Jira + Git | Sprint Goal status (on-track/at-risk/blocked). Sync check: verify Notion sprint DB matches Jira state. Completed since last update. Plan for next 24h. Blockers + who can help. | `engineering:standup` |
+| **Implementation** | During sprint | GitHub + Bash + File Tools | Write code, build skills/MCPs, run tests. WIP limit: 1 story In Progress (max 2 if blocked on review). | `engineering:*`, `ai-test-engineer` |
+| **Code Review** | Per PR | GitHub Integration + Bash | Self-review against checklist, prep for Tobi's review. CI must pass before review requested. | `engineering:code-review` |
+| **Sprint Review** | Sprint end | Notion (metrics) + Confluence (writeup) | Demo increment. Capture feedback. Adapt backlog. Velocity (story points) is internal forecasting only — not shown externally. | `product-management:stakeholder-update` |
+| **Retrospective** | Sprint end | Notion (retro DB) | Step 1: Review prior retro action items (close completed, escalate stale). Then generate new insights. Action item database with Status/Owner/Due Date. | `operations:process-optimization` |
 | **Documentation** | Continuous | Confluence | ADRs, runbooks, technical docs | `engineering:documentation`, `engineering:architecture` |
 
 ### 3.2 Artifact Mapping
@@ -150,7 +154,8 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 |----------|----------|------------|-------------|
 | Product Roadmap | Notion + .md in workspace | Claude (drafts) | Tobi (approves) |
 | Project Plan / Backlog | Jira (source of truth) + .md backup | Claude (drafts stories) | Tobi (prioritizes) |
-| Sprint Board | Notion (board view on sprint DB) | Claude (creates DB, views, updates properties) | Tobi (monitors) |
+| Sprint Goal | Notion sprint DB (required property) + Jira sprint description | Claude (proposes) | Tobi (approves) |
+| Sprint Board | Notion (board view on sprint DB, derived from Jira) | Claude (creates DB, views, syncs from Jira) | Tobi (monitors) |
 | Sprint Velocity / Metrics | Notion (chart views, rollups) | Claude (generates) | Tobi (reviews) |
 | Retro Action Items | Notion (retro DB with Status/Owner/Due) | Claude (creates, tracks across sprints) | Tobi (reviews) |
 | ADRs | Confluence + .md in repo | Claude (drafts) | Tobi (approves) |
@@ -188,9 +193,10 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 2. Design the system if needed → `engineering:system-design`
 3. Write the product spec / PRD → `product-management:write-spec`
 4. Break the spec into Initiative → Epics → User Stories with:
-   - Acceptance criteria per story
+   - Acceptance criteria per story (Given/When/Then)
+   - Definition of Ready verified (see Section 6.7)
    - Definition of Done (project-level + story-level)
-   - Estimates (T-shirt sizes: S/M/L/XL)
+   - Estimates: T-shirt sizes mapped to story points (S=1, M=2, L=3, XL=5)
 5. Create the Jira structure:
    - `createJiraIssue` for each epic and story
    - `createIssueLink` for dependencies
@@ -220,21 +226,25 @@ Definition of Done:
 **Trigger:** Tobi approves the sprint scope.
 
 **Claude's actions:**
+0. Confirm Sprint Goal with Tobi before starting first story
 1. Create sprint in Jira (if Jira supports sprint creation via API, otherwise note it)
 2. Move approved stories to sprint
-3. For each story, in priority order:
-   a. Transition to "In Progress" in Jira: `transitionJiraIssue`
-   b. Create a feature branch: `git checkout -b feature/{JIRA-KEY}-{short-description}`
-   c. Implement the code / skill / MCP
-   d. Write tests → `ai-test-engineer` for test generation, `engineering:testing-strategy` for test design
-   e. Run tests via Bash
-   f. Self-review using `engineering:code-review` checklist
-   g. Commit with conventional commit message (see Section 6)
-   h. Push branch and create PR (via `git` CLI or `gh` CLI)
-   i. Add Jira comment with PR link: `addCommentToJiraIssue`
-   j. Surface PR for Tobi's review
-   k. On approval: merge, transition to "Done" in Jira
-   l. Log time if applicable: `addWorklogToJiraIssue`
+3. **WIP limit: 1 story "In Progress" at a time. Max 2 only if the first is blocked awaiting Tobi's review.**
+4. For each story, in priority order:
+   a. Verify story meets Definition of Ready (Section 6.7). If not, flag gaps before starting.
+   b. Transition to "In Progress" in Jira: `transitionJiraIssue`
+   c. Create a feature branch: `git checkout -b feature/{JIRA-KEY}-{short-description}`
+   d. Implement the code / skill / MCP
+   e. Write tests → `ai-test-engineer` for test generation, `engineering:testing-strategy` for test design
+   f. Run tests via Bash
+   g. Self-review using `engineering:code-review` checklist
+   h. Commit with conventional commit message (see Section 6)
+   i. Push branch → CI runs automatically (Section 6.8). Fix any failures before requesting review.
+   j. Create PR (via `git` CLI or `gh` CLI)
+   k. Add Jira comment with PR link: `addCommentToJiraIssue`
+   l. Surface PR for Tobi's review
+   m. On approval: merge (branch protection enforces CI pass + approval), transition to "Done" in Jira
+   n. Log time if applicable: `addWorklogToJiraIssue`
 
 ### Phase 4: Testing & Quality
 
@@ -276,6 +286,7 @@ Definition of Done:
 1. Generate PR summary with:
    - BLUF: what changed and why
    - Files changed (grouped by concern)
+   - CI status (all checks must pass)
    - Test results
    - Risk assessment
    - Rollback plan
@@ -289,17 +300,19 @@ Definition of Done:
 **Trigger:** Sprint ends or project milestone reached.
 
 **Claude's actions:**
-1. Generate sprint metrics:
-   - Velocity (stories completed vs. planned)
+0. **Review prior retro action items first:** Query Notion retro DB for open items. Surface status. Close completed. Escalate stale items (>2 sprints open).
+1. Assess: Was the Sprint Goal met? Why or why not?
+2. Generate sprint metrics:
+   - Velocity: story points completed vs. planned (S=1, M=2, L=3, XL=5). Use 3-sprint rolling average for forecasting. **Velocity is an internal planning tool only — never use as a performance metric or target.**
    - Cycle time per story
    - Bug/defect rate
    - Test coverage delta
-2. Generate status report → `operations:status-report`
-3. Capture learnings:
+3. Generate status report → `operations:status-report`
+4. Capture learnings:
    - Save non-obvious insights to `.auto-memory/` (feedback or project type)
    - Update CLAUDE.md if a new standard emerges
-4. Propose process improvements → `operations:process-optimization`
-5. Update roadmap if priorities shifted → `product-management:roadmap-update`
+5. Propose process improvements → `operations:process-optimization`
+6. Update roadmap if priorities shifted → `product-management:roadmap-update`
 
 ---
 
@@ -426,6 +439,14 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 - `blocked` — has external dependency
 - `tech-debt` — technical debt item
 
+**Story Points (mapped from T-shirt sizes):**
+- S = 1 point
+- M = 2 points
+- L = 3 points
+- XL = 5 points
+
+**WIP Limit:** 1 story "In Progress" at a time. Maximum 2 only if the first is blocked awaiting Tobi's review.
+
 **Workflow:** To Do → In Progress → In Review → Done
 
 ### 6.4 Notion Conventions
@@ -471,6 +492,45 @@ A story is "Done" when:
 6. No regressions introduced
 7. Approval tier enforced (Tier 1/2/3 per protocol)
 8. Memory updated if non-obvious learnings emerged
+
+### 6.7 Definition of Ready (Guideline)
+
+A story is "Ready" to enter a sprint when:
+
+1. Acceptance criteria written in Given/When/Then format
+2. Dependencies identified and unblocked (or explicitly accepted as risk)
+3. Story points assigned (S=1, M=2, L=3, XL=5)
+4. Fits within one sprint
+5. No open questions requiring Tobi input
+
+**Anti-gate rule:** DoR is a shared understanding, not a bureaucratic gate. Claude can pull urgent items that don't meet DoR with documented risk acceptance. Flag the gap and proceed.
+
+### 6.8 CI/CD Baseline (GitHub Actions)
+
+Every PR to `main` triggers an automated CI pipeline via GitHub Actions (free tier: 2,000 min/month for private repos):
+
+1. **Build verification** — project compiles/installs cleanly
+2. **Unit test suite** — all tests pass
+3. **Linting** — code style enforcement (if applicable to project)
+4. **Secret scanning** — GitHub native push protection (free)
+5. **Dependency scanning** — Dependabot alerts (free, built into GitHub)
+
+**Rules:**
+- CI must pass before a PR can be reviewed
+- Branch protection blocks merge if CI fails (see Section 6.9)
+- Claude builds the GitHub Actions YAML per project needs
+- CI results are linked in every PR summary (Phase 6)
+
+### 6.9 Branch Protection (Enforced via GitHub)
+
+Main branch protection rules (configured in GitHub repo settings):
+
+- **Require pull request** before merging — no direct pushes to `main`
+- **Require at least 1 approval** (Tobi) before merge
+- **Require status checks to pass** — CI pipeline from Section 6.8
+- **No force pushes** to `main`
+
+This converts the approval requirements from Section 7.2 into system-enforced controls rather than relying solely on manual discipline. Accidental merges to `main` are technically prevented.
 
 ---
 
@@ -526,13 +586,26 @@ These are HARD RULES — violations are classified as breaches:
 
 **If team collaboration grows:** Adding a Slack MCP would enable Claude to post standup updates, sprint notifications, and incident alerts to channels.
 
-### 8.2 CI/CD Integration (Future)
+### 8.2 Independent Code Review (P1 — Next Sprint)
 
-**Current state:** No direct CI/CD MCP (GitHub Actions, CircleCI, etc.).
+**Current state:** Claude self-reviews code, which is not meaningful code review. The entity that wrote the code cannot catch its own blind spots.
 
-**When needed:** If projects grow to include automated pipelines, a CI/CD MCP would let Claude monitor builds, trigger deploys, and read test results without browser automation.
+**Planned fix (free options):**
+- **Gemini Code Assist** — free GitHub App providing automatic PR review using Gemini 2.5
+- **PR-Agent by Qodo** — Apache 2.0 open source, supports Gemini/OpenAI via LiteLLM, runs as GitHub Action
+- **Custom MCP server** — wrapping Gemini 2.5 Flash API ($0.30/M input tokens) for cross-surface review
 
-### 8.3 Not Connected (Available in Connector Panel)
+### 8.3 Security Lifecycle (P1 — Sprint 3)
+
+**Current state:** Security review is a checklist item but not systematized.
+
+**Planned fix (all free):**
+- Secret scanning: GitHub native (free)
+- Dependency scanning: Dependabot (free)
+- SAST: Semgrep Community (free, open-source)
+- Threat considerations added to ADR template
+
+### 8.4 Not Connected (Available in Connector Panel)
 
 These connectors are visible but not yet connected. Connect when needed:
 
@@ -653,27 +726,34 @@ To activate this SOP, append the following to the global CLAUDE.md:
 
 ```xml
 <development_sop>
-Claude is Tobi's engineer. Follow the Development SOP in `Development and Tech/claude-development-sop.md` for all software development work.
+Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead.
 
 Tool allocation:
 - Jira = issue tracking source of truth (stories, bugs, tasks, transitions)
-- Notion = sprint ceremonies (planning DBs, retro DBs, velocity charts, knowledge base)
+- Notion = sprint ceremonies (planning DBs, retro DBs, velocity charts, knowledge base) — derived from Jira, not independently maintained
 - Confluence = technical documentation (ADRs, runbooks, specs, PRDs)
-- GitHub = code, version control, PRs (connected via GitHub Integration connector)
+- GitHub = code, version control, PRs (GitHub Integration connector)
 - Monday.com = HHN operations only (never use for dev work)
 - PocketBase + HTML dashboard = BD CRM (separate scope)
 
-Key rules:
-- Use Agile Scrum: Initiative → Epic → Story hierarchy in Jira
+Agile Scrum rules:
+- Hierarchy: Initiative → Epic → Story in Jira
+- Every sprint has a Sprint Goal (required). Format: "By the end of this sprint, [outcome] so that [value]."
+- Every story meets Definition of Ready before entering sprint
+- Story points: S=1, M=2, L=3, XL=5. Velocity = sum of points, not story count.
+- WIP limit: 1 story In Progress (max 2 if blocked on review)
 - Branch naming: {type}/{JIRA-KEY}-{description}
 - Commit format: Conventional Commits with Co-Authored-By
+- CI (GitHub Actions) must pass before PR review. Branch protection enforces CI + approval before merge.
 - Never merge to main without Tobi's explicit approval
 - Never deploy without Tobi's explicit approval
 - Create Jira issues, Confluence docs, Notion DBs, and branches autonomously
 - Surface all PRs, deploys, and external communications for review
-- Activate engineering skills by phase (see SOP Section 5)
 - Run ai-test-engineer for all new code
-- Log all architecture decisions as ADRs in Confluence
+- Log architecture decisions as ADRs in Confluence
+- Retro starts by reviewing prior action items before generating new insights
 - Update .auto-memory with non-obvious learnings after each sprint
+
+Full SOP with phase-by-phase procedures, skill activation map, and standards: `Development and Tech/claude-development-sop.md` — read this file at the start of any dev session.
 </development_sop>
 ```
