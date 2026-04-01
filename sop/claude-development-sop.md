@@ -2,7 +2,7 @@
 
 **Date:** April 1, 2026
 **Owner:** Tobi Koyejo
-**Version:** 3.1
+**Version:** 3.2
 **Purpose:** CLAUDE.md-ready instructions governing how Claude operates as Tobi's engineer across all surfaces — Cowork, Claude Code, Claude Desktop — using Agile Scrum with GitHub, Atlassian (Jira/Confluence), and Notion.
 
 ---
@@ -138,18 +138,21 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 **Sprint Goal:** Required. Every sprint has a one-sentence, outcome-oriented Sprint Goal. Format: "By the end of this sprint, [outcome] so that [value]." All mid-sprint scope changes must reference whether they help or harm the Sprint Goal.
 **Artifact authority:** Jira is authoritative for all issue state. Notion sprint DBs are derived views that Claude regenerates from Jira queries — not independently maintained. When Jira and Notion conflict, Jira wins; Claude corrects Notion.
 
+**Ceremony right-sizing (ADR):** 1-week sprints are retained. Sprint Review and Retrospective are combined into a single end-of-sprint block (~30 min async). All other ceremonies remain async. This reduces ceremony overhead while preserving inspect-and-adapt feedback loops. Documented as an ADR; revisit if sprint length changes.
+
 ### 3.1 Ceremony Map
 
 | Ceremony | When | Tool | Claude's Role | Skill(s) |
 |----------|------|------|---------------|----------|
 | **Backlog Refinement** | Async, pre-sprint (~1h/week) | Jira | Draft stories, acceptance criteria, estimates. Verify each story meets Definition of Ready. | `product-management:write-spec` |
 | **Sprint Planning** | Sprint start | Notion (sprint DB) + Jira (issues) | Propose Sprint Goal (Tobi approves). Build sprint database, board/timeline views, capacity check (3-sprint rolling avg), link to Jira issues. | `product-management:sprint-planning`, `operations:capacity-plan` |
-| **Daily Standup** | Daily (async) | Jira + Git | Sprint Goal status (on-track/at-risk/blocked). Sync check: verify Notion sprint DB matches Jira state. Completed since last update. Plan for next 24h. Blockers + who can help. | `engineering:standup` |
+| **Daily Standup** | Daily (async) | Jira + Git | Sprint Goal status (on-track/at-risk/blocked). Sync check: verify Notion sprint DB matches Jira state. Automated blocker detection: flag stories "In Review" >24h or "In Progress" >2 days with recommended action. Completed since last update. Plan for next 24h. Blockers + who can help. | `engineering:standup` |
 | **Implementation** | During sprint | GitHub + Bash + File Tools | Write code, build skills/MCPs, run tests. WIP limit: 1 story In Progress (max 2 if blocked on review). | `engineering:*`, `ai-test-engineer` |
 | **Code Review** | Per PR | GitHub Integration + Bash | Self-review against checklist, prep for Tobi's review. CI must pass before review requested. | `engineering:code-review` |
 | **Sprint Review** | Sprint end | Notion (metrics) + Confluence (writeup) | Demo increment. Capture feedback. Adapt backlog. Velocity (story points) is internal forecasting only — not shown externally. | `product-management:stakeholder-update` |
 | **Retrospective** | Sprint end | Notion (retro DB) | Step 1: Review prior retro action items (close completed, escalate stale). Then generate new insights. Action item database with Status/Owner/Due Date. | `operations:process-optimization` |
 | **Documentation** | Continuous | Confluence | ADRs, runbooks, technical docs | `engineering:documentation`, `engineering:architecture` |
+| **Monthly Roadmap Review** | 1st week of month | Notion (roadmap) + Jira (backlog) | Generate roadmap status + velocity trend + upcoming capacity. Surface strategic drift risks. Tobi reviews priorities and adjusts. | `product-management:roadmap-update`, `product-management:metrics-review` |
 
 ### 3.2 Artifact Mapping
 
@@ -235,6 +238,7 @@ Definition of Done:
 3. **WIP limit: 1 story "In Progress" at a time. Max 2 only if the first is blocked awaiting Tobi's review.**
 4. For each story, in priority order:
    a. Verify story meets Definition of Ready (Section 6.7). If not, flag gaps before starting.
+   a1. **L/XL decomposition:** If the story is sized L (3pts) or XL (5pts), decompose into Jira subtasks before implementation. Subtasks are individually transitionable for intra-story progress visibility. Each subtask should be completable within 1 day.
    b. Transition to "In Progress" in Jira: `transitionJiraIssue`
    c. Create a feature branch: `git checkout -b feature/{JIRA-KEY}-{short-description}`
    d. Implement the code / skill / MCP
@@ -263,11 +267,18 @@ Definition of Done:
 6. **Run deploy checklist:** → `engineering:deploy-checklist`
 7. Output: Test report with pass/fail, coverage %, mutation score
 
-**Testing standards:**
-- Minimum 80% line coverage for new code
-- All acceptance criteria have corresponding test cases
-- Property-based testing for edge cases
+**Testing standards (tiered by story size):**
+
+| Tier | Story Size | Requirements |
+|------|-----------|-------------|
+| **Standard** | S (1pt), M (2pt) | Unit tests, 80% line coverage, all AC have test cases |
+| **Enhanced** | L (3pt), XL (5pt) | Standard + mutation testing + property-based tests for edge cases |
+| **Integration** | Stories touching API boundaries | Enhanced + integration tests with real externals (no mocks unless explicitly approved) |
+
+**Cross-tier rules:**
+- All acceptance criteria have corresponding test cases (all tiers)
 - No mocked external dependencies in integration tests unless explicitly approved
+- Test tier is determined at story sizing, not retroactively
 
 ### Phase 5: Documentation
 
@@ -308,10 +319,16 @@ Definition of Done:
 0. **Review prior retro action items first:** Query Notion retro DB for open items. Surface status. Close completed. Escalate stale items (>2 sprints open).
 1. Assess: Was the Sprint Goal met? Why or why not?
 2. Generate sprint metrics:
-   - Velocity: story points completed vs. planned (S=1, M=2, L=3, XL=5). Use 3-sprint rolling average for forecasting. **Velocity is an internal planning tool only — never use as a performance metric or target.**
-   - Cycle time per story
+   - **Velocity:** story points completed vs. planned (S=1, M=2, L=3, XL=5). Use 3-sprint rolling average for forecasting. **Velocity is an internal planning tool only — never use as a performance metric or target.**
+   - **Lead time:** time from story creation to "Done" (measures planning-to-delivery efficiency)
+   - **Cycle time:** time from "In Progress" to "Done" (measures execution efficiency)
+   - **WIP age:** how long current in-progress items have been open (early warning for stuck work)
+   - **Deployment frequency:** how often code reaches main (measures delivery cadence)
+   - **Change failure rate:** % of deployments causing rollback or hotfix (measures quality)
    - Bug/defect rate
    - Test coverage delta
+
+   **Metrics ethics rule:** These metrics exist for process improvement and forecasting only. Never use velocity, cycle time, or any flow metric as a performance evaluation tool, a comparison between sprints used to pressure faster delivery, or an external-facing commitment.
 3. Generate status report → `operations:status-report`
 4. Capture learnings:
    - Save non-obvious insights to `.auto-memory/` (feedback or project type)
@@ -452,6 +469,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 
 **WIP Limit:** 1 story "In Progress" at a time. Maximum 2 only if the first is blocked awaiting Tobi's review.
 
+**Story decomposition:** Stories sized L (3pts) or XL (5pts) must be decomposed into subtasks in Jira before implementation. Each subtask is individually transitionable (To Do → In Progress → Done) for intra-story visibility.
+
 **Workflow:** To Do → In Progress → In Review → Done
 
 ### 6.4 Notion Conventions
@@ -485,20 +504,28 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 **Page naming:** `{Project} — {Doc Type} — {Title}`
 Example: `LinkedIn BD — ADR — CRM Platform Selection`
 
-### 6.6 Definition of Done (Global)
+### 6.6 Definition of Done & Release Gates
 
-A story is "Done" when:
+**Definition of Done (quality commitment):** A story is "Done" — meaning the increment is inspectable and potentially releasable — when:
 
 1. All acceptance criteria verified
-2. Tests written and passing (unit + integration where applicable)
+2. Tests written and passing (per tiered testing standards — Section 4)
 3. Code reviewed (Claude self-review + AI reviewers + Tobi approval)
 4. Documentation updated (Confluence and/or inline)
-5. Jira ticket transitioned to "Done"
-6. No regressions introduced
-7. Approval tier enforced (Tier 1/2/3 per protocol)
+5. No regressions introduced
+6. Secret scan passes (no secrets in committed code)
+7. Dependency scan passes (no Critical/High CVEs unaddressed)
 8. Memory updated if non-obvious learnings emerged
-9. Secret scan passes (no secrets in committed code)
-10. Dependency scan passes (no Critical/High CVEs unaddressed)
+
+**Release gates (governance controls):** A "Done" story becomes "Released" when:
+
+1. Jira ticket transitioned to "Done"
+2. Approval tier enforced (Tier 1/2/3 per protocol)
+3. PR merged to main (branch protection enforces CI + approval)
+4. Deploy checklist completed (if deploying to production)
+5. Tobi gives explicit deploy approval (if applicable)
+
+**Why the separation:** DoD is about quality — "is this increment safe to ship?" Release gates are about governance — "has this been approved through the right channels?" A story can be Done (quality-complete) but not Released (awaiting approval). Conflating the two creates ambiguity about whether "Done" means "quality-checked" or "shipped."
 
 ### 6.7 Definition of Ready (Guideline)
 
@@ -591,6 +618,35 @@ Baseline security controls integrated into the development lifecycle. All tools 
 - Secret accidentally committed → Rotate the secret immediately, then remediate the commit history
 - Semgrep finding on PR → Address before merge (same as CI failure)
 
+### 6.12 Memory Schema & Cleanup (.auto-memory)
+
+**Naming convention:** `{type}_{topic}.md` where type is one of: `user`, `feedback`, `project`, `reference`.
+
+Examples: `feedback_testing_style.md`, `project_linkedin_bd_system.md`, `reference_dev_workspace_ids.md`
+
+**Required frontmatter:**
+```yaml
+---
+name: {descriptive name}
+description: {one-line description — used for relevance matching}
+type: {user | feedback | project | reference}
+---
+```
+
+**Categories (MECE):**
+- `user` — Role, preferences, knowledge profile. Stable; changes rarely.
+- `feedback` — Corrections and confirmed approaches. High-value; prevents repeat mistakes.
+- `project` — Active work context, decisions, deadlines. Decays fast; verify before relying on.
+- `reference` — Pointers to external systems and resources. Stable; update when systems change.
+
+**Cleanup trigger:** Quarterly (every 12 sprints). Claude reviews all memory files:
+1. **Stale project memories:** Any project memory >90 days old — verify against current state, archive or delete
+2. **Superseded feedback:** If a later memory contradicts an earlier one, merge into one authoritative entry
+3. **Orphaned references:** Check that referenced systems/URLs still exist
+4. **MEMORY.md index:** Remove entries for deleted files, ensure all files are indexed
+
+**What NOT to save:** Code patterns derivable from the codebase, git history, debugging solutions (fix is in the code), anything already in CLAUDE.md, ephemeral task details.
+
 ---
 
 ## 7. Approval & Safety Protocols
@@ -635,9 +691,20 @@ These are HARD RULES — violations are classified as breaches:
 | **Medium** | Wrong branch, failed tests merged, incorrect Jira state | Flag to Tobi. Self-correct if possible. Log in retro. |
 | **Low** | Style violation, missing label, incomplete comment | Self-correct. Note in next standup. |
 
+**Breach post-mortem (High/Critical):** Any High or Critical breach triggers a post-mortem document in Confluence (ADR-style):
+1. **Timeline:** What happened, when, in what sequence
+2. **Root cause:** Why it happened (5 Whys or fishbone)
+3. **Contributing factors:** Process gaps, tooling gaps, unclear rules
+4. **Prevention measures:** Concrete changes to prevent recurrence
+5. **Follow-up:** Referenced in next retrospective as first agenda item
+
+Post-mortems are blameless — focus on system failures, not individual mistakes. The goal is prevention, not punishment.
+
 ---
 
 ## 8. Gaps & Future Additions
+
+> **All P0–P3 steelman recommendations implemented as of v3.2.** See `sop-steelman-recommendations.md` for full audit trail.
 
 ### 8.1 Slack MCP (Optional)
 
@@ -653,7 +720,20 @@ Moved to Section 6.10. Dual AI reviewer setup: Qodo PR-Agent (primary, GitHub Ac
 
 Moved to Section 6.11. SSDF-lite baseline: GitHub secret scanning, Dependabot, Semgrep Community. ADR template updated with Security Considerations field. DoD updated with security scan requirements.
 
-### 8.4 Not Connected (Available in Connector Panel)
+### 8.4 P2/P3 Steelman Items — ✅ Implemented (v3.2)
+
+All P2 and P3 recommendations from the 3-way red team review are now integrated into the SOP body:
+- **Blocker detection** → Section 3.1 (Daily Standup)
+- **Ceremony right-sizing** → Section 3 (Sprint Lifecycle)
+- **Story decomposition** → Section 6.3 (Jira Conventions) + Phase 3
+- **Tiered testing** → Phase 4 (Testing & Quality)
+- **Breach post-mortem** → Section 7.3 (Breach Classification)
+- **DORA + flow metrics** → Phase 7 (Retrospective)
+- **DoD/release gate separation** → Section 6.6
+- **Monthly roadmap review** → Section 3.1 (Ceremony Map)
+- **Memory schema & cleanup** → Section 6.12
+
+### 8.5 Not Connected (Available in Connector Panel)
 
 These connectors are visible but not yet connected. Connect when needed:
 
@@ -794,6 +874,7 @@ Agile Scrum rules:
 - Every story meets Definition of Ready before entering sprint
 - Story points: S=1, M=2, L=3, XL=5. Velocity = sum of points, not story count.
 - WIP limit: 1 story In Progress (max 2 if blocked on review)
+- L/XL stories: decompose into Jira subtasks before implementation
 - Branch naming: {type}/{JIRA-KEY}-{description}
 - Commit format: Conventional Commits with Co-Authored-By
 - CI (GitHub Actions) must pass before PR review. Branch protection enforces CI + approval before merge.
@@ -802,11 +883,17 @@ Agile Scrum rules:
 - Never deploy without Tobi's explicit approval
 - Create Jira issues, Confluence docs, Notion DBs, and branches autonomously
 - Surface all PRs, deploys, and external communications for review
-- Run ai-test-engineer for all new code
+- Run ai-test-engineer for all new code. Tiered testing: S/M = unit + 80% coverage; L/XL = add mutation + property-based; API boundaries = add integration tests.
 - Log architecture decisions as ADRs in Confluence (include Security Considerations section)
 - Retro starts by reviewing prior action items before generating new insights
 - Update .auto-memory with non-obvious learnings after each sprint
 - Security: Secret scan + dependency scan must pass before merge. Critical/High CVEs = priority fix in current sprint.
+- Standup: auto-flag stories "In Review" >24h or "In Progress" >2 days
+- DoD = quality (tests, security, docs). Release gates = governance (approval, merge, deploy). Two distinct states.
+- High/Critical breaches trigger blameless post-mortem in Confluence
+- Monthly roadmap review: 1st week of month, velocity trend + strategic drift check
+- Metrics: velocity, lead time, cycle time, WIP age, deployment frequency, change failure rate. Never use as performance evaluation.
+- .auto-memory: naming = {type}_{topic}.md, quarterly cleanup, verify before relying on stale entries
 
 Full SOP with phase-by-phase procedures, skill activation map, and standards: `Development and Tech/claude-development-sop.md` — read this file at the start of any dev session.
 </development_sop>
