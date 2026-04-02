@@ -10,14 +10,6 @@ description: >
   when other skills need Tobi's preferences (formatting, frameworks, dev process).
   The only conversations that don't need this skill are pure small talk or
   single-fact lookups. When in doubt, load it. Always use this skill proactively.
-compatibility: Works across Claude.ai, Cowork, and Claude Code. No external tools required.
-metadata:
-  author: tobi-koyejo
-  version: 1.0.0
-  category: behavioral-config
-  source-of-truth-for: [personal-preferences, CLAUDE.md, SOP-appendix-C]
-  last-updated: 2026-04-01
-  freeze-until: 2026-07-01
 ---
 
 # Tobi Operating System
@@ -25,6 +17,11 @@ metadata:
 Behavioral configuration for all Claude interactions with Tobi Koyejo. This
 skill is the single source of truth — personal preferences and CLAUDE.md both
 point here instead of duplicating these rules.
+
+<!-- Metadata: author=tobi-koyejo, version=1.0.0, category=behavioral-config,
+     source-of-truth-for: personal-preferences, CLAUDE.md, SOP-appendix-C,
+     last-updated: 2026-04-01, freeze-until: 2026-07-01,
+     compatibility: Claude.ai, Cowork, Claude Code -->
 
 ## Identity & Calibration
 
