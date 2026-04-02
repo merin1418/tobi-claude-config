@@ -25,7 +25,7 @@ Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead. 
 4. [Phase-by-Phase SOP](#4-phase-by-phase-sop)
 5. [Skill Activation Map](#5-skill-activation-map)
 6. [Standards & Conventions](#6-standards--conventions)
-7. [Approval & Safety Protocols](#7-approval--safety-protocols)
+7. [Approval & Safety Protocols](#7-approval--safety-protocols) (includes §7.5 Claude Orchestration Model)
 8. [Gaps & Future Additions](#8-gaps--future-additions)
 
 **Appendices:**
@@ -619,6 +619,40 @@ Main branch protection rules (configured in GitHub repo settings):
 - **MUST:** No force pushes to `main`
 
 This converts the approval requirements from Section 7.2 into system-enforced controls rather than relying solely on manual discipline. Accidental merges to `main` are technically prevented.
+
+#### 6.9.1 Repo Security Baseline (New Repo Checklist)
+
+Every new GitHub repo **MUST** have the following configured before the first PR is opened:
+
+| Control | Tool / Location | Verification |
+|---------|----------------|--------------|
+| Branch protection on `main` per §6.9 | GitHub → Settings → Branches | Claude checks via `gh api` at first push |
+| `.gitignore` with security-sensitive exclusions | Repo root | Pre-commit `check-added-large-files` + Claude template |
+| Secret scanning enabled | GitHub → Settings → Code security | Claude verifies via `gh api repos/{owner}/{repo}` |
+| Dependabot alerts enabled | GitHub → Settings → Code security | Same API check |
+| `CLAUDE.md` with project-specific coding standards | Repo root | Claude creates from template at repo init |
+
+**Required `.gitignore` entries (minimum):**
+```
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+__pycache__/
+.venv/
+node_modules/
+dist/
+.mypy_cache/
+```
+
+**GitHub tier prerequisite:** Branch protection on private repos requires **GitHub Pro** ($4/month). Without Pro, private repos cannot enforce PR requirements, status checks, or force-push blocks — the SOP's §6.9 MUST rules become unenforceable. GitHub Pro is a mandatory infrastructure cost for this SOP to function as designed across all 8+ private repos under `merin1418/`.
+
+**Enforcement:** Claude runs a repo security baseline check at the start of any dev session touching a repo for the first time. If any control is missing, Claude flags the gap and offers to remediate before proceeding with feature work.
+
+- **Enforced by:** Claude session-start check + `gh api` verification
+- **Confidence:** Strong — GitHub APIs support all checks programmatically
 
 ### 6.10 Independent Code Review (Automated)
 
@@ -1657,6 +1691,74 @@ AI verdict: {Qodo: clean/findings} | {Gemini: clean/findings}
 ```
 
 **Why risk lanes:** AI increases PR volume ~98% and review time ~91%. Without triage, all PRs compete equally for Tobi's attention, leading to review fatigue on trivial changes and reduced scrutiny on critical ones. Risk lanes direct Tobi's finite review attention where it creates the most value.
+
+### 7.5 Claude Orchestration Model
+
+**Principle:** Claude is the primary interface for all review, approval, and status work. Platforms (GitHub, Jira, Confluence, Notion) are data stores and execution engines. Tobi steers from within Claude sessions. Platform UIs are used only for platform-specific configuration work (e.g., GitHub repo settings, Jira admin, Confluence space permissions).
+
+**Why:** Tobi's attention is the throughput constraint in continuous flow. Every platform switch carries a context-switching cost. Claude can pre-assemble decision packages that bundle data from multiple platforms into a single reviewable surface, reducing approval cycle time.
+
+#### 7.5.1 Orchestration by Risk Lane
+
+| Lane | Claude's Role | Platform Fallthrough |
+|------|--------------|---------------------|
+| **Lane 3 (Summary)** | Full orchestration. Claude surfaces 2-line summary with AI verdicts, test results, and coverage. Tobi approves or escalates in-session. On approval, Claude merges and transitions Jira. Tobi never opens GitHub for these. | None required. |
+| **Lane 2 (Standard)** | Primary orchestration. Claude surfaces a decision package: diff summary grouped by concern, AI reviewer findings (Qodo + Gemini), Jira story with acceptance criteria, test results, coverage delta, and a direct GitHub PR link. Tobi reviews in Claude for most cases; clicks through to GitHub only if something needs investigation. | GitHub PR link included for optional deep inspection. |
+| **Lane 1 (Deep)** | Pre-assembly + post-approval execution. Claude surfaces the full decision package (same as Lane 2 plus: ADR context, architecture impact, security considerations). Tobi reviews the actual diff in GitHub — the platform's diff tooling is superior for security/architecture reviews. After Tobi approves in GitHub, Claude handles merge and Jira transition. | GitHub diff review is the primary review surface. |
+
+#### 7.5.2 Decision Package Format
+
+Claude assembles the following for every PR surfaced to Tobi (detail level varies by lane):
+
+```
+## [{Lane}] {JIRA-KEY}: {title}
+**BLUF:** {1-2 sentence summary of what changed and why}
+
+### Changes
+{Files changed grouped by concern — not a flat list}
+
+### AI Review
+- Qodo: {clean | N findings — top finding summarized}
+- Gemini: {clean | N findings — top finding summarized}
+- Agreement: {agree | DISAGREE — escalation triggered}
+
+### Quality
+- Tests: {pass/fail} | Coverage: {%} (Δ {+/-}%)
+- CI: {pass/fail} | Security scan: {pass/fail}
+
+### Story Context
+{Acceptance criteria from Jira — confirms PR delivers what was specified}
+
+### Links
+- [PR #{number}]({GitHub PR URL})
+- [Jira {JIRA-KEY}]({Jira issue URL})
+
+→ **Approve** / **Escalate** / **Request changes:** {specific ask}
+```
+
+Lane 3 uses the abbreviated format from §7.4. Lane 2 uses the full format above. Lane 1 uses the full format plus an Architecture Impact section.
+
+#### 7.5.3 Beyond PRs — Platform Data Surfacing
+
+The orchestration model extends beyond code review:
+
+| Data Type | Source Platform | How Claude Surfaces It |
+|-----------|----------------|----------------------|
+| PR review queue | GitHub | Daily async status includes all open PRs with aging, lane, and recommended review order |
+| Backlog state | Jira | Claude pulls current Ready items when WIP drops; surfaces next-pull recommendation with story context |
+| Flow metrics | Jira + Notion | Weekly reflection generated entirely in Claude session; Notion dashboards updated as derived artifacts |
+| ADRs and specs | Confluence | Claude pulls relevant ADR/spec context when surfacing PRs that reference architecture decisions |
+| CI/deploy status | GitHub Actions | Claude checks CI status before surfacing any PR; includes pass/fail in decision package |
+| Dependency alerts | Dependabot | Claude surfaces Critical/High CVEs as priority items in daily status with recommended action |
+
+**Operating rule:** If Tobi needs information from a platform to make a decision, Claude pulls it. Tobi should not need to open a platform tab to gather context for a decision Claude is asking him to make.
+
+#### 7.5.4 Constraints and Failure Modes
+
+- **Session boundary risk:** If Claude surfaces a PR, Tobi approves, and the session compacts before merge executes — the approval is lost. **Mitigation:** Claude executes merge immediately on approval (no deferred execution). If merge fails, Claude surfaces the failure before session ends. HANDOVER.md captures any pending approvals.
+- **Staleness risk:** Claude pulls data at query time. A decision package generated 20+ minutes ago may have stale CI status. **Mitigation:** Claude re-checks CI status at the moment of merge execution, not at package assembly time. If status changed, Claude re-surfaces before proceeding.
+- **Platform degradation fallback:** If GitHub API or Jira MCP is unavailable, Claude flags the gap and provides direct platform links for manual review rather than blocking the workflow.
+- **Audit trail:** All approvals happen in Claude conversation history. For governance purposes, GitHub PR comments still record the approval event (Claude posts "Approved by Tobi in session" as a PR comment before merging).
 
 ---
 

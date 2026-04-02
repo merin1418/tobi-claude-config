@@ -58,6 +58,8 @@ All PRs get AI dual review:
 - Run ai-test-engineer for all new code. Tiered testing: S/M = unit + 80% coverage; L/XL = add mutation + property-based; API boundaries = add integration tests.
 - Log architecture decisions as ADRs in Confluence (include Security Considerations section)
 - Security: Secret scan + dependency scan must pass before merge. Critical/High CVEs = priority fix immediately.
+- Repo security baseline: Every new repo MUST have branch protection, `.gitignore` with security exclusions, secret scanning, Dependabot, and CLAUDE.md configured before first PR. Claude verifies at first push via `gh api`.
+- Claude orchestration model: Claude is the primary review surface. Lane 3 = full orchestration (Tobi never opens GitHub). Lane 2 = Claude-primary with GitHub link for optional inspection. Lane 1 = Claude pre-assembles decision package, Tobi reviews diff in GitHub. Claude posts "Approved by Tobi in session" as PR comment before merging for audit trail.
 - Aging alerts: >24h Awaiting Approval = reminder, >48h = defer new work completion, >2 days In Progress = blocker analysis
 - DoD = quality (tests, security, docs). Release gates = governance (approval, merge, deploy). Two distinct states.
 - High/Critical breaches trigger blameless post-mortem in Confluence
