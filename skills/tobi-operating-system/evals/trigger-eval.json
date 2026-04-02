@@ -1,0 +1,82 @@
+[
+  {
+    "query": "ok so I need to put together a one-pager for my boss on why we should invest in behind-the-meter storage for our Dallas facility. can you help me draft something?",
+    "should_trigger": true
+  },
+  {
+    "query": "I just got out of a call with the Chevron team and need to write a follow-up email. Here are my rough notes from the meeting...",
+    "should_trigger": true
+  },
+  {
+    "query": "think through this with me — we're deciding between building the LinkedIn BD automation on n8n vs building custom Python scripts. what framework fits?",
+    "should_trigger": true
+  },
+  {
+    "query": "catch me up on the Iran situation. what are prediction markets saying and how's oil reacting?",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to write tests for the new PocketBase webhook handler. It's an L-sized story with 4 API endpoints. here's the spec...",
+    "should_trigger": true
+  },
+  {
+    "query": "pull the latest from the CD Jira board and give me a status update on what's in progress and what's blocked",
+    "should_trigger": true
+  },
+  {
+    "query": "help me structure a recommendation for switching our microgrid monitoring vendor from Schneider to Enel X. need to present to leadership friday",
+    "should_trigger": true
+  },
+  {
+    "query": "I want to write a LinkedIn post about the interconnection backlog problem. something educational, aimed at facility managers who don't understand why their solar project is taking 3 years",
+    "should_trigger": true
+  },
+  {
+    "query": "steelman the case that we should keep using Monday.com for HHN operations instead of migrating to Jira. then red-team it.",
+    "should_trigger": true
+  },
+  {
+    "query": "research what Reddit is saying about Aggreko's temporary power solutions vs Caterpillar and Cummins. I want honest community sentiment, not marketing fluff.",
+    "should_trigger": true
+  },
+  {
+    "query": "what time is it in Lagos right now",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the capital of Burkina Faso",
+    "should_trigger": false
+  },
+  {
+    "query": "hey good morning! how are you doing today",
+    "should_trigger": false
+  },
+  {
+    "query": "convert 72 degrees fahrenheit to celsius",
+    "should_trigger": false
+  },
+  {
+    "query": "read the file at /tmp/output.log and show me the last 20 lines",
+    "should_trigger": false
+  },
+  {
+    "query": "what does the word 'ephemeral' mean",
+    "should_trigger": false
+  },
+  {
+    "query": "rename cat.txt to dog.txt in my downloads folder",
+    "should_trigger": false
+  },
+  {
+    "query": "how many days until christmas",
+    "should_trigger": false
+  },
+  {
+    "query": "can you set a timer for 25 minutes",
+    "should_trigger": false
+  },
+  {
+    "query": "what's 15% tip on a $47.50 bill",
+    "should_trigger": false
+  }
+]
