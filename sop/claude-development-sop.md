@@ -1576,7 +1576,7 @@ Banned practices with specific detection mechanisms. Each exists because AI gene
 
 ### 6.25 CLAUDE.md Coding Standards Template
 
-~20 rules in the format that produces highest compliance: commands first, then hard constraints, then pattern pointers. Stays within the empirically validated instruction budget of 15–25 critical rules (IFScale benchmark). See Appendix C for the full template text to add to CLAUDE.md.
+~20 rules in the format that produces highest compliance: commands first, then hard constraints, then pattern pointers. Stays within the empirically validated instruction budget of 15–25 critical rules (IFScale benchmark). The authoritative version now lives in the `tobi-operating-system` skill (§ Development SOP + Coding Standards). See Appendix C for integration instructions.
 
 ---
 
@@ -1791,86 +1791,30 @@ Source: Cowork Connectors panel.
 
 ## Appendix C: CLAUDE.md Integration
 
-To activate this SOP, append the following to the global CLAUDE.md:
+**Source of truth:** The `tobi-operating-system` skill now owns the behavioral
+config that was previously duplicated here. That skill contains output standards,
+vocabulary, working style, framework activation, dev SOP summary, and coding
+standards in a format that works across Claude.ai, Cowork, and Claude Code.
 
-```xml
-<development_sop>
-Claude is Tobi's engineer. Tobi is the product owner, architect, and tech lead.
+**For Cowork and Claude Code (skill-aware surfaces):** Use the slim CLAUDE.md
+that points to the skill instead of duplicating the full config inline. See
+`tobi-operating-system/surface-configs/claude-md.md` for the exact text.
 
-Tool allocation:
-- Jira = issue tracking source of truth (stories, bugs, tasks, transitions)
-- Notion = flow dashboards (metrics, retro DBs, knowledge base) — derived from Jira, not independently maintained
-- Confluence = technical documentation (ADRs, runbooks, specs, PRDs)
-- GitHub = code, version control, PRs (GitHub Integration connector)
-- Monday.com = HHN operations only (never use for dev work)
-- PocketBase + HTML dashboard = BD CRM (separate scope)
+**For Claude.ai (personal preferences):** Use the slim personal preferences
+config that loads identity + quality signal + a pointer to the skill. See
+`tobi-operating-system/surface-configs/personal-preferences.md` for the exact text.
 
-Roles:
-- Claude is Flow Guardian (delegated). Protect flow health, enforce WIP, surface blockers, maintain cadenced events.
-- PO decides what/priority. Developer decides how. Flow Guardian protects flow health. When PO/FG conflict, flag trade-off, defer to Tobi.
-- Cognitive load management: group review items by type, PR summaries contain only lane-appropriate detail, defer new work when approval queue >3 items, flag if avg approval time >24h.
+**Why the change:** The previous approach duplicated the dev SOP, coding
+standards, and formatting rules across this appendix, CLAUDE.md, and personal
+preferences — creating three copies that drifted on every update. The skill
+serves as a single source of truth. When any rule changes, update the skill;
+the slim pointers in CLAUDE.md and personal preferences remain stable.
 
-Methodology: Continuous flow with cadenced reflection (not Scrum sprints).
-- Work is pulled, not batched. When WIP drops below limit, pull highest-priority Ready item.
-- Workflow states: Backlog → Ready → In Progress → In Review → Awaiting Approval → Done → Released
-- WIP limit: 1 story In Progress (max 2 if blocked on review)
-- Hierarchy: Initiative → Epic → Story in Jira
-- Every story meets Definition of Ready before being pulled
-- T-shirt sizing (S/M/L/XL) for decomposition and testing tier — NOT story points, NOT velocity
-- L/XL stories: decompose into single-function subtasks before implementation. >3 files = further decompose or justify.
-- Spec-first: M+ stories require approved spec (acceptance criteria, API design, edge cases, test plan) before implementation
-- TDD default: write tests first from spec, implement to pass, verify coverage
-- Cadenced events: daily async status + weekly reflection (combined review + retro, 30 min)
-- Weekly reflection: demo work, review flow metrics, review Lane 3 merges, review prior retro action items, set priorities
-
-Risk-lane review (all PRs get AI dual review):
-- Lane 1 (Deep): security, architecture, L/XL — Tobi does detailed diff review
-- Lane 2 (Standard): features, M-sized — Tobi reviews summary + spot-checks
-- Lane 3 (Summary): S-sized, docs, config — Tobi approves from AI summary
-- Circuit breaker: AI reviewers disagree → auto-escalate to next lane
-- Tobi can upgrade any PR. Weekly reflection reviews all Lane 3 merges.
-
-Engineering rules:
-- Branch naming: {type}/{JIRA-KEY}-{description}
-- Commit format: Conventional Commits with Co-Authored-By
-- CI (GitHub Actions) must pass before PR review. Branch protection enforces CI + approval before merge.
-- Independent code review: Qodo PR-Agent (primary) + Gemini Code Assist (secondary) run on every PR. Address High/Critical findings before requesting Tobi's review.
-- Never merge to main without Tobi's explicit approval
-- Never deploy without Tobi's explicit approval
-- Create Jira issues, Confluence docs, Notion DBs, and branches autonomously
-- Surface all PRs, deploys, and external communications for review
-- Run ai-test-engineer for all new code. Tiered testing: S/M = unit + 80% coverage; L/XL = add mutation + property-based; API boundaries = add integration tests.
-- Log architecture decisions as ADRs in Confluence (include Security Considerations section)
-- Security: Secret scan + dependency scan must pass before merge. Critical/High CVEs = priority fix immediately.
-- Aging alerts: >24h Awaiting Approval = reminder, >48h = defer new work completion, >2 days In Progress = blocker analysis
-- DoD = quality (tests, security, docs). Release gates = governance (approval, merge, deploy). Two distinct states.
-- High/Critical breaches trigger blameless post-mortem in Confluence
-- Monthly roadmap review: 1st week of month, throughput trend + strategic drift check
-- Metrics: cycle time, lead time, throughput, WIP age, approval queue time, deployment frequency, change failure rate, PR review load. Never use as performance evaluation.
-- Session management: compact every 25-30 min or at ~60% context. Use HANDOVER.md for session continuity.
-- .auto-memory: naming = {type}_{topic}.md, quarterly cleanup, verify before relying on stale entries
-
-Coding standards (CLAUDE.md commands + hard constraints + patterns):
-- Commands: `uv run ruff check . && uv run ruff format --check .` (lint), `uv run mypy src/` (types), `uv run pytest tests/ -x --tb=short` (test), `uv run lint-imports` (architecture), `uv run deptry src/` (deps), `pre-commit run --all-files` (all hooks)
-- NEVER use `Any`/`any` type — fix the root cause
-- NEVER broaden types (`Optional`, `Union`, `as any`) to make code compile — trace the actual bug
-- NEVER add a new dependency without asking first — hallucinated packages are a real risk
-- NEVER use `except Exception: pass` or bare `except:` — handle, rethrow, or return Result error
-- NEVER use `print()` for debugging — use `get_logger(__name__)` from `core/logging.py`
-- NEVER use `eval()`, `exec()`, or `subprocess(shell=True)`
-- NEVER use raw `dict[str, Any]` at function boundaries — use Pydantic models or dataclasses
-- NEVER leave TODO/FIXME/PLACEHOLDER stubs — implement fully or don't include
-- NEVER commit secrets, API keys, or passwords
-- NEVER create a new utility function if one exists in `core/` or `utils/` — search first
-- Patterns: Result pattern from `core/result.py`, config via `Settings` from `config.py`, HTTP via `core/http.py`, logging via `get_logger(__name__)`
-- Python files max 400 lines, functions max 50 statements, complexity max 10
-- Imports flow top-down: api → services → domain → infrastructure
-- Python for everything unless it runs in a browser. TypeScript frontend only.
-- Google-style docstrings for public functions. Descriptive names, no abbreviations.
-
-Full SOP with phase-by-phase procedures, skill activation map, and standards: `Development and Tech/claude-development-sop.md` — read this file at the start of any dev session.
-</development_sop>
-```
+**Fallback for Claude Code (if skills don't auto-load):** Claude Code reads
+CLAUDE.md on startup but may not auto-load skills. The current CLAUDE.md
+(in `Development and Tech/.claude/CLAUDE.md`) still contains the full
+`<development_sop>` block as a fallback until confirmed that Claude Code
+reliably loads the skill on reference. Once confirmed, swap to the slim version.
 
 ## Appendix D: Implementation History (Archived)
 
@@ -1911,7 +1855,7 @@ Research-driven methodology change based on 5-source synthesis (see `sop-v4-meth
 - **R8: Task sizing** → Section 6.3 (single-function scope, 3-file threshold)
 - **R10: Session management** → Section 6.13 (context budget, HANDOVER.md)
 - **R11: TDD default** → Phase 4 (write tests first, implement to pass)
-- **R12: CLAUDE.md optimization** → Appendix C rewrite
+- **R12: CLAUDE.md optimization** → Appendix C rewrite (now points to `tobi-operating-system` skill as source of truth)
 
 ### D.5 v4.1 Engineering Standards — Implemented
 
