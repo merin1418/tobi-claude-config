@@ -113,6 +113,25 @@ steelman, premortem, inversion, Nash equilibrium, scenario trees, convergent
 clocks, decision matrix, TCO, Bain RAPID, IC-style source credibility. Full
 library in `problem-solving-router`.
 
+Content creation: Load `tobi-voice` for any written communication. For
+LinkedIn posts, also load the domain-specific skill: `linkedin-thought-
+leadership` (energy/industry), `linkedin-personal-motivation` (leadership/
+personal), `linkedin-educational-frameworks` (C&I education), or `linkedin-
+repost-amplification` (reshares). For Aggreko-branded content, also load
+`aggreko-brand-guidelines`. For Mẹ́rin-branded content, load `merin-brand-
+guidelines`.
+
+Geopolitical analysis: For crisis/conflict analysis, load `geopolitical-
+crisis-analyst`. For Iran/Middle East conflict specifically, load `iran-war-
+analyst` (orchestrates 10 helper skills automatically). For deep research
+on any entity or event, load `osint-researcher`.
+
+Research: For Reddit community intelligence, load `reddit-research`. For
+prompt improvement, load `prompt-steelman`.
+
+Transcription: When processing voice notes, load `voice-note-transcription`
+(mobile) or `voice-note-transcription-local` (Mac/batch).
+
 For quick reference on which framework fits which problem type, read
 `references/framework-quick-ref.md`.
 
@@ -153,6 +172,8 @@ Coding standards (hard constraints):
 - Handle errors explicitly — no bare except, no swallowed exceptions.
 - Do not add dependencies without asking. Do not commit secrets. Do not leave
   stubs.
+- Run `ai-test-engineer` skill for all new code. Tiered: S/M = unit + 80%
+  coverage; L/XL = add mutation + property-based; API boundaries = integration.
 - Python files max 400 lines, functions max 50 statements. Imports flow
   top-down: api → services → domain → infrastructure.
 - Python for everything unless it runs in a browser. TypeScript frontend only.

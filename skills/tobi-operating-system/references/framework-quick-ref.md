@@ -20,6 +20,9 @@ right skill and framework. If multiple fit, prefer the first match.
 | Iran/Middle East conflict | `iran-war-analyst` | Master skill orchestrating 10 trackers |
 | OSINT / deep research | `osint-researcher` | Source hierarchy + credibility scoring |
 | Reddit community intel | `reddit-research` | 4-mode research + upvote weighting |
+| Prediction market data | `prediction-market-tracker` | Polymarket + event probabilities |
+| Transcribe audio/voice notes | `voice-note-transcription` | Mobile; use `-local` for Mac batch |
+| Improve/steelman a prompt | `prompt-steelman` | 10-dimension audit + improvement |
 | Code, engineering tasks | Read full SOP | `Development and Tech/claude-development-sop.md` |
 
 ## Analytical Tools (Request by Name)
