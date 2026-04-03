@@ -1,0 +1,31 @@
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+**/secrets/
+.secrets.baseline
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Build artifacts
+dist/
+build/
+coverage/
+.nyc_output/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Git internals
+.git/
+
